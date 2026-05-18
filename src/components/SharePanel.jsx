@@ -65,7 +65,6 @@ export default function SharePanel({ projectId, session, profile, onClose }) {
         <div className="sp-head">
           <div>
             <div className="sp-title">Share project</div>
-            <div className="sp-subtitle">{subtitle}</div>
           </div>
           <button className="btn btn-icon sp-close" onClick={onClose} title="Close">
             <Icon name="x" size={16} />
