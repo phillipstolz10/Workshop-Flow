@@ -44,6 +44,20 @@ export function useWorkshopRealtime({
   const userInfoRef  = useRef({ userId, fullName, color });
   useEffect(() => { userInfoRef.current = { userId, fullName, color }; }, [userId, fullName, color]);
 
+  // Keep callbacks in a ref so the channel listeners (set up once) always
+  // call the latest version even after re-renders.
+  const cbRef = useRef({});
+  cbRef.current = {
+    onRemoteBlockPatch,
+    onRemoteBlockAdd,
+    onRemoteBlockDelete,
+    onRemoteSectionAdd,
+    onRemoteSectionDelete,
+    onRemoteSectionRename,
+    onRemoteBlockReorder,
+    onRemoteSectionReorder,
+  };
+
   // ── Presence helpers ──────────────────────────────────────────────────────
 
   const rebuildFromPresence = useCallback((state) => {
@@ -90,16 +104,17 @@ export function useWorkshopRealtime({
     });
     channelRef.current = channel;
 
-    // Broadcast listeners
+    // Broadcast listeners — delegate through cbRef so they always call the
+    // latest callback even though the channel is only set up once.
     channel
-      .on('broadcast', { event: 'block_patch' },     ({ payload }) => onRemoteBlockPatch(payload.blockId, payload.patch))
-      .on('broadcast', { event: 'block_add' },       ({ payload }) => onRemoteBlockAdd(payload.block, payload.sectionId))
-      .on('broadcast', { event: 'block_delete' },    ({ payload }) => onRemoteBlockDelete(payload.blockId))
-      .on('broadcast', { event: 'section_add' },     ({ payload }) => onRemoteSectionAdd(payload.section, payload.sectionIds))
-      .on('broadcast', { event: 'section_delete' },  ({ payload }) => onRemoteSectionDelete(payload.sectionId))
-      .on('broadcast', { event: 'section_rename' },  ({ payload }) => onRemoteSectionRename(payload.sectionId, payload.title))
-      .on('broadcast', { event: 'block_reorder' },   ({ payload }) => onRemoteBlockReorder(payload.blockOrders))
-      .on('broadcast', { event: 'section_reorder' }, ({ payload }) => onRemoteSectionReorder(payload.sectionIds));
+      .on('broadcast', { event: 'block_patch' },     ({ payload }) => cbRef.current.onRemoteBlockPatch(payload.blockId, payload.patch))
+      .on('broadcast', { event: 'block_add' },       ({ payload }) => cbRef.current.onRemoteBlockAdd(payload.block, payload.sectionId))
+      .on('broadcast', { event: 'block_delete' },    ({ payload }) => cbRef.current.onRemoteBlockDelete(payload.blockId))
+      .on('broadcast', { event: 'section_add' },     ({ payload }) => cbRef.current.onRemoteSectionAdd(payload.section, payload.sectionIds))
+      .on('broadcast', { event: 'section_delete' },  ({ payload }) => cbRef.current.onRemoteSectionDelete(payload.sectionId))
+      .on('broadcast', { event: 'section_rename' },  ({ payload }) => cbRef.current.onRemoteSectionRename(payload.sectionId, payload.title))
+      .on('broadcast', { event: 'block_reorder' },   ({ payload }) => cbRef.current.onRemoteBlockReorder(payload.blockOrders))
+      .on('broadcast', { event: 'section_reorder' }, ({ payload }) => cbRef.current.onRemoteSectionReorder(payload.sectionIds));
 
     // Presence listeners
     channel
