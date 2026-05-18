@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useContext } from 'react';
+import { useState, useRef, useEffect, useContext, Fragment } from 'react';
 import Icon from './Icon.jsx';
 import BlockRow from './BlockRow.jsx';
 import BlockEditor from './BlockEditor.jsx';
@@ -334,7 +334,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           );
 
           return (
-            <React.Fragment key={sid}>
+            <Fragment key={sid}>
               {idx > 0 && !secDrag && !drag && InsertBar}
               {secDrag && SecDropBar}
 
@@ -453,7 +453,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                   onDrop={(e) => { e.preventDefault(); moveSection(secDrag, workshop.sectionIds.length); setSecDrag(null); setSecDropAt(null); }}
                 />
               )}
-            </React.Fragment>
+            </Fragment>
           );
         })}
 
