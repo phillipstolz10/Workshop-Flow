@@ -30,7 +30,7 @@ export function dbToAppData(projects, workshops, sections, blocks) {
 
 export async function loadAllData() {
   const [pr, wr, sr, br] = await Promise.all([
-    db.from('projects').select('*').order('created_at'),
+    db.from('projects').select('*').order('created_at', { ascending: false }),
     db.from('workshops').select('*').order('position'),
     db.from('sections').select('*').order('position'),
     db.from('blocks').select('*').order('position'),
