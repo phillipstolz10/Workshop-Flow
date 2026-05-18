@@ -785,6 +785,46 @@ body[data-density="compact"] .blk-desc { display: none; }
 .np-submit:hover:not(:disabled) { background: #ea580c; border-color: #ea580c; }
 .np-submit:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* ── Project view danger zone ── */
+.pv-danger-zone {
+  margin-top: 48px; padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.pv-delete-btn {
+  color: var(--danger); gap: 8px;
+}
+.pv-delete-btn:hover { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+
+/* ── Confirmation modal ── */
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(12,10,9,0.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  animation: scrimIn 160ms ease;
+}
+.confirm-modal {
+  width: 100%; max-width: 400px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 32px 32px 28px;
+  box-shadow: 0 20px 60px -12px rgba(0,0,0,0.28);
+  animation: npIn 200ms cubic-bezier(.2,.8,.3,1);
+}
+.confirm-title {
+  font-family: var(--font-serif); font-size: 26px;
+  letter-spacing: -0.015em; line-height: 1.1; margin-bottom: 12px;
+}
+.confirm-body {
+  font-size: 14px; color: var(--text-muted); line-height: 1.55;
+  margin: 0 0 28px;
+}
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.confirm-delete-btn {
+  background: var(--danger); color: #fff;
+  border-color: var(--danger); gap: 8px;
+}
+.confirm-delete-btn:hover { background: #b91c1c; border-color: #b91c1c; }
+
 /* ── Shared project badge (dashboard) ── */
 .dash-shared-badge {
   display: inline-flex; align-items: center;

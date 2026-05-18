@@ -339,6 +339,7 @@ export default function App() {
             onOpenWorkshop={goWorkshop}
             onNewWorkshop={() => newWorkshop(view.projectId)}
             onDeleteWorkshop={deleteWorkshop}
+            onDeleteProject={deleteProject}
             onUpdateProject={updateProject}
             onBack={goDashboard}
           />

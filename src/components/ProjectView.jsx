@@ -3,12 +3,13 @@ import Icon from './Icon.jsx';
 import SharePanel from './SharePanel.jsx';
 import { fmtDate, workshopTotal, fmtDuration } from '../lib/utils.js';
 
-export default function ProjectView({ data, projectId, userId, session, profile, onOpenWorkshop, onNewWorkshop, onBack, onDeleteWorkshop, onUpdateProject }) {
+export default function ProjectView({ data, projectId, userId, session, profile, onOpenWorkshop, onNewWorkshop, onBack, onDeleteWorkshop, onDeleteProject, onUpdateProject }) {
   const project = data.projects.find((p) => p.id === projectId);
   if (!project) return null;
   const isOwner  = project.userId === userId;
   const workshops = project.workshopIds.map((wid) => data.workshops[wid]);
-  const [showShare, setShowShare] = useState(false);
+  const [showShare,         setShowShare]         = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
     <div className="page">
@@ -87,6 +88,17 @@ export default function ProjectView({ data, projectId, userId, session, profile,
           <span>Add a workshop</span>
         </button>
       </div>
+      {isOwner && (
+        <div className="pv-danger-zone">
+          <button
+            className="btn btn-ghost pv-delete-btn"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            <Icon name="trash" size={14} /> Delete project
+          </button>
+        </div>
+      )}
+
       {showShare && (
         <SharePanel
           projectId={projectId}
@@ -94,6 +106,28 @@ export default function ProjectView({ data, projectId, userId, session, profile,
           profile={profile}
           onClose={() => setShowShare(false)}
         />
+      )}
+
+      {showDeleteConfirm && (
+        <div className="confirm-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-title">Delete "{project.name}"?</div>
+            <p className="confirm-body">
+              This will permanently delete the project and all its workshops, sections, and blocks. This cannot be undone.
+            </p>
+            <div className="confirm-actions">
+              <button className="btn btn-ghost" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn confirm-delete-btn"
+                onClick={() => { setShowDeleteConfirm(false); onBack(); onDeleteProject(projectId); }}
+              >
+                <Icon name="trash" size={14} /> Delete project
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
