@@ -678,6 +678,50 @@ body[data-density="compact"] .blk-desc { display: none; }
 /* Spinner */
 @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
 
+/* ── Topnav name ── */
+.topnav-name {
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+}
+
+/* ── Name Prompt Modal ── */
+.np-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  background: rgba(12,10,9,0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: scrimIn 180ms ease;
+}
+.np-modal {
+  width: 100%; max-width: 420px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 44px 40px 40px;
+  box-shadow: 0 24px 64px -16px rgba(0,0,0,0.30);
+  animation: npIn 240ms cubic-bezier(.2,.8,.3,1);
+}
+@keyframes npIn { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.np-brand {
+  font-family: var(--font-serif); font-size: 18px; letter-spacing: -0.02em;
+  color: var(--text); margin-bottom: 28px;
+}
+.np-brand .dot { color: var(--accent); }
+.np-heading {
+  font-family: var(--font-serif); font-size: 34px; font-weight: 400;
+  letter-spacing: -0.02em; line-height: 1.08; margin: 0 0 10px; color: var(--text);
+}
+.np-sub { font-size: 14px; color: var(--text-muted); margin: 0 0 28px; line-height: 1.5; }
+.np-input { height: 44px; font-size: 15px; margin-bottom: 10px; }
+.np-error { font-size: 13px; color: var(--danger); margin-bottom: 10px; }
+.np-submit {
+  width: 100%; height: 44px; font-size: 14px; justify-content: center;
+  border-radius: 10px; background: var(--accent); border-color: var(--accent);
+  color: #fff; font-weight: 500;
+}
+.np-submit:hover:not(:disabled) { background: #ea580c; border-color: #ea580c; }
+.np-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* ── Packing List Panel ── */
 .pl-scrim { position: fixed; inset: 0; background: rgba(12,10,9,0.18); z-index: 40; animation: scrimIn 140ms ease; }
 .pl-panel {

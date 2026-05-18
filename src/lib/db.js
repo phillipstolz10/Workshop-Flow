@@ -96,6 +96,16 @@ export async function applyStateDiff(fromState, toState) {
   if (blkRows.length) await db.from('blocks').upsert(blkRows);
 }
 
+export async function getProfile(userId) {
+  const { data } = await db.from('profiles').select('full_name').eq('id', userId).single();
+  return data || null;
+}
+
+export async function upsertProfile(userId, fullName) {
+  const { error } = await db.from('profiles').upsert({ id: userId, full_name: fullName });
+  if (error) throw error;
+}
+
 export async function seedSampleProject() {
   const pid = crypto.randomUUID();
   const wid = crypto.randomUUID();

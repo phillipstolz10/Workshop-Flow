@@ -1,15 +1,34 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 import { db } from '../lib/supabase.js';
+import { upsertProfile } from '../lib/db.js';
 
-export default function ProfileView({ session, onBack }) {
+export default function ProfileView({ session, profile, onSaveProfile, onBack }) {
   const userEmail = session?.user?.email || '';
   const [email,    setEmail]    = useState(userEmail);
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState(profile?.full_name || '');
   const [emailBusy,    setEmailBusy]    = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [nameBusy,     setNameBusy]     = useState(false);
   const [emailFb,    setEmailFb]    = useState(null);
   const [passwordFb, setPasswordFb] = useState(null);
+  const [nameFb,     setNameFb]     = useState(null);
+
+  const saveName = async (e) => {
+    e.preventDefault();
+    const trimmed = fullName.trim();
+    if (!trimmed) { setNameFb({ type: 'error', msg: 'Name cannot be empty.' }); return; }
+    setNameBusy(true); setNameFb(null);
+    try {
+      await upsertProfile(session.user.id, trimmed);
+      onSaveProfile?.(trimmed);
+      setNameFb({ type: 'success', msg: 'Name saved.' });
+    } catch (err) {
+      setNameFb({ type: 'error', msg: err.message || 'Could not save name.' });
+    }
+    setNameBusy(false);
+  };
 
   const saveEmail = async (e) => {
     e.preventDefault();
@@ -48,6 +67,22 @@ export default function ProfileView({ session, onBack }) {
       </div>
 
       <div className="profile-body">
+        <div className="profile-section">
+          <div className="profile-section-title">Full name</div>
+          <form onSubmit={saveName}>
+            <div className="profile-row" style={{ marginBottom: nameFb ? 10 : 0 }}>
+              <input className="input" type="text" value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Your full name" autoComplete="name" />
+              <button className="btn btn-primary" type="submit"
+                disabled={nameBusy || fullName.trim() === (profile?.full_name || '')}>
+                {nameBusy ? 'Saving…' : 'Update'}
+              </button>
+            </div>
+            {nameFb && <div className={`profile-feedback ${nameFb.type}`}>{nameFb.msg}</div>}
+          </form>
+        </div>
+
         <div className="profile-section">
           <div className="profile-section-title">Email address</div>
           <form onSubmit={saveEmail}>

@@ -8,9 +8,19 @@ import ProfileView from './ProfileView.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { useTweaks } from '../hooks/useTweaks.js';
 import { db } from '../lib/supabase.js';
-import { loadAllData, applyStateDiff, seedSampleProject } from '../lib/db.js';
+import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile } from '../lib/db.js';
+import NamePromptModal from './NamePromptModal.jsx';
 
 const TWEAK_DEFAULTS = { density: 'comfortable', sectionStyle: 'cards', editor: 'panel' };
+
+function getInitials(fullName, email) {
+  if (fullName?.trim()) {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0][0].toUpperCase();
+  }
+  return (email?.[0] ?? '?').toUpperCase();
+}
 
 const Spinner = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16, color: 'var(--text-muted)' }}>
@@ -36,6 +46,9 @@ export default function App() {
   const [, forceTick] = useState(0);
   const bump = () => forceTick((t) => t + 1);
 
+  const [profile,      setProfile]      = useState(null);
+  const [profileReady, setProfileReady] = useState(false);
+
   const loadStartedRef = useRef(false);
 
   const doLoadData = async (user = null) => {
@@ -51,6 +64,12 @@ export default function App() {
           localStorage.setItem(flag, '1');
           d = await loadAllData();
         }
+      }
+      // Load profile
+      if (user) {
+        const prof = await getProfile(user.id).catch(() => null);
+        setProfile(prof);
+        setProfileReady(true);
       }
       setData(d); setLoading(false);
     } catch (e) {
@@ -70,6 +89,8 @@ export default function App() {
       if (event === 'SIGNED_OUT') {
         loadStartedRef.current = false;
         setData(null);
+        setProfile(null);
+        setProfileReady(false);
         setView({ name: 'dashboard' });
         undoStack.current = [];
         redoStack.current = [];
@@ -238,8 +259,12 @@ export default function App() {
             </a>
           </div>
           <div className="topnav-right">
-            <button className="avatar-btn" onClick={() => navigateTo({ name: 'profile' })} title="Account">
-              {(session?.user?.email?.[0] ?? '?').toUpperCase()}
+            {profile?.full_name && (
+              <span className="topnav-name">{profile.full_name}</span>
+            )}
+            <button className="avatar-btn" onClick={() => navigateTo({ name: 'profile' })}
+              title={profile?.full_name || session?.user?.email || 'Account'}>
+              {getInitials(profile?.full_name, session?.user?.email)}
             </button>
           </div>
         </nav>
@@ -271,13 +296,25 @@ export default function App() {
           />
         }
         {view.name === 'profile' &&
-          <ProfileView session={session} onBack={goDashboard} />
+          <ProfileView
+            session={session}
+            profile={profile}
+            onSaveProfile={(name) => setProfile((p) => ({ ...(p || {}), full_name: name }))}
+            onBack={goDashboard}
+          />
         }
 
         {toastMsg && (
           <div className="toast">
             <Icon name="check" size={14} />{toastMsg}
           </div>
+        )}
+
+        {profileReady && !profile?.full_name?.trim() && (
+          <NamePromptModal
+            userId={session.user.id}
+            onSaved={(name) => setProfile((p) => ({ ...(p || {}), full_name: name }))}
+          />
         )}
       </div>
     </HistoryContext.Provider>
