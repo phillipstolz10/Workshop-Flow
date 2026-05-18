@@ -677,3 +677,43 @@ body[data-density="compact"] .blk-desc { display: none; }
 
 /* Spinner */
 @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+
+/* ── Packing List Panel ── */
+.pl-scrim { position: fixed; inset: 0; background: rgba(12,10,9,0.18); z-index: 40; animation: scrimIn 140ms ease; }
+.pl-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 92vw);
+  background: var(--surface); border-left: 1px solid var(--border); z-index: 41;
+  display: flex; flex-direction: column;
+  box-shadow: -20px 0 40px -20px rgba(0,0,0,0.18);
+  animation: panelIn 220ms cubic-bezier(.2,.8,.3,1);
+}
+.pl-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 22px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.pl-title { font-family: var(--font-serif); font-size: 24px; letter-spacing: -0.01em; line-height: 1.15; }
+.pl-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono); }
+.pl-close { flex-shrink: 0; margin-top: 4px; }
+.pl-body { flex: 1; overflow-y: auto; padding: 12px 0; }
+.pl-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 56px 32px; color: var(--text-muted); height: 100%;
+}
+.pl-empty p { margin: 0; font-size: 13.5px; line-height: 1.65; }
+.pl-empty p:first-of-type { font-weight: 500; color: var(--text); }
+.pl-list { list-style: none; margin: 0; padding: 0 8px; display: flex; flex-direction: column; gap: 1px; }
+.pl-item label {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; border-radius: var(--r-md); cursor: pointer;
+  transition: background 100ms ease, opacity 120ms ease;
+}
+.pl-item label:hover { background: var(--surface-2); }
+.pl-item.is-checked label { opacity: 0.4; }
+.pl-checkbox {
+  width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; accent-color: var(--accent);
+}
+.pl-item-label { flex: 1; font-size: 14px; line-height: 1.4; transition: text-decoration 80ms ease; }
+.pl-item.is-checked .pl-item-label { text-decoration: line-through; }
+.pl-item-count { font-size: 12px; color: var(--text-subtle); font-family: var(--font-mono); }
+.pl-footer { padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.pl-reset { height: 32px; font-size: 12.5px; padding: 0 12px; color: var(--text-muted); }

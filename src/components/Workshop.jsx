@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useContext, Fragment } from 'react';
 import Icon from './Icon.jsx';
 import BlockRow from './BlockRow.jsx';
 import BlockEditor from './BlockEditor.jsx';
+import PackingList from './PackingList.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { db } from '../lib/supabase.js';
 import { syncSectionPositions, syncBlockPositions } from '../lib/db.js';
@@ -69,6 +70,8 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const [editingBlockId, setEditingBlockId] = useState(null);
   const [collapsed, setCollapsed] = useState({});
   const [editingPlanned, setEditingPlanned] = useState(false);
+
+  const [showPackingList, setShowPackingList] = useState(false);
 
   const [drag, setDrag] = useState(null);
   const blockDragRef = useRef(null);
@@ -308,6 +311,17 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             <UndoRedoBtns />
           </div>
           <div style={{ flex: 1 }} />
+          <div className="ws-toolbar-group">
+            <button
+              className={'btn btn-ghost ws-tool' + (showPackingList ? ' is-active' : '')}
+              onClick={() => setShowPackingList((v) => !v)}
+              title="Packing list"
+              style={showPackingList ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent-border)' } : {}}
+            >
+              <Icon name="backpack" size={14} />
+              <span>Packing list</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -469,6 +483,14 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           onChange={(b) => patchBlock(editingBlockId, b)}
           onClose={() => setEditingBlockId(null)}
           onDelete={() => deleteBlock(editingBlockId)}
+        />
+      )}
+
+      {showPackingList && (
+        <PackingList
+          data={data}
+          workshopId={workshopId}
+          onClose={() => setShowPackingList(false)}
         />
       )}
     </div>

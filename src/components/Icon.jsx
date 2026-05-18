@@ -21,6 +21,7 @@ export default function Icon({ name, size = 16, className = '', strokeWidth = 1.
     case 'check':         return <svg {...common}><path d="m5 12 5 5L20 6"/></svg>;
     case 'x':             return <svg {...common}><path d="M6 6l12 12M18 6 6 18"/></svg>;
     case 'arrow-right':   return <svg {...common}><path d="M5 12h14m-5-5 5 5-5 5"/></svg>;
+    case 'backpack':      return <svg {...common}><path d="M4 20V10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"/><path d="M8 10h8"/></svg>;
     default: return null;
   }
 }
