@@ -67,8 +67,10 @@ function UndoRedoBtns() {
 }
 
 export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory, userId, userColor, userFullName }) {
+  // Look up workshop/project — may be briefly undefined during Strict Mode
+  // double-mount or a concurrent data reload. Guard after hooks (Rules of Hooks).
   const workshop = data.workshops[workshopId];
-  const project  = data.projects.find((p) => p.id === workshop.projectId);
+  const project  = workshop ? data.projects.find((p) => p.id === workshop.projectId) : null;
 
   const [editingBlockId,  setEditingBlockId]  = useState(null);
   const [collapsed,       setCollapsed]       = useState({});
@@ -81,8 +83,9 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const [secDrag,    setSecDrag]    = useState(null);
   const [secDropAt,  setSecDropAt]  = useState(null);
 
-  const totalMins = workshopTotal(data, workshopId);
+  const totalMins = workshop ? workshopTotal(data, workshopId) : 0;
   const blockOffsets = (() => {
+    if (!workshop) return {};
     const map = {}; let cum = 0;
     workshop.sectionIds.forEach(sid => {
       (data.sections[sid]?.blockIds || []).forEach(bid => {
@@ -395,6 +398,9 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   // ── Context value for children (BlockEditor etc.) ─────────────────────────
 
   const realtimeCtx = { presence, locks, trackField, untrackField, userId };
+
+  // ── Guard — must come after all hooks ────────────────────────────────────
+  if (!workshop || !project) return null;
 
   // ── Render ────────────────────────────────────────────────────────────────
 

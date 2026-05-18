@@ -96,6 +96,11 @@ export function useWorkshopRealtime({
   useEffect(() => {
     if (!workshopId || !userId) return;
 
+    // `active` prevents async callbacks from firing after cleanup.
+    // This avoids unhandled-rejection crashes in React Strict Mode where
+    // the effect runs, cleans up, then runs again before async work settles.
+    let active = true;
+
     const channel = db.channel(`workshop:${workshopId}`, {
       config: {
         broadcast: { self: false }, // don't echo our own broadcasts back
@@ -118,22 +123,23 @@ export function useWorkshopRealtime({
 
     // Presence listeners
     channel
-      .on('presence', { event: 'sync' },  () => rebuildFromPresence(channel.presenceState()))
-      .on('presence', { event: 'join' },  () => rebuildFromPresence(channel.presenceState()))
-      .on('presence', { event: 'leave' }, () => rebuildFromPresence(channel.presenceState()));
+      .on('presence', { event: 'sync' },  () => { if (active) rebuildFromPresence(channel.presenceState()); })
+      .on('presence', { event: 'join' },  () => { if (active) rebuildFromPresence(channel.presenceState()); })
+      .on('presence', { event: 'leave' }, () => { if (active) rebuildFromPresence(channel.presenceState()); });
 
-    // Subscribe then track self
+    // Subscribe then track self — catch errors so an unsubscribed channel
+    // (e.g. during Strict Mode cleanup) never produces an unhandled rejection.
     channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await pushPresence();
+      if (status === 'SUBSCRIBED' && active) {
+        await pushPresence().catch(() => {});
       }
     });
 
     return () => {
-      // Untrack presence before removing the channel
-      channel.untrack().finally(() => db.removeChannel(channel));
+      active = false;
       channelRef.current = null;
       myLocksRef.current.clear();
+      channel.untrack().catch(() => {}).finally(() => db.removeChannel(channel));
     };
   }, [workshopId, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
