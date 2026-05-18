@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useContext, Fragment } from 'react';
+import { useState, useRef, useEffect, useContext, useCallback, Fragment } from 'react';
 import Icon from './Icon.jsx';
 import BlockRow from './BlockRow.jsx';
 import BlockEditor from './BlockEditor.jsx';
 import PackingList from './PackingList.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
+import { WorkshopRealtimeContext } from '../contexts/WorkshopRealtimeContext.jsx';
+import { useWorkshopRealtime } from '../hooks/useWorkshopRealtime.js';
 import { db } from '../lib/supabase.js';
 import { syncSectionPositions, syncBlockPositions } from '../lib/db.js';
 import { workshopTotal, fmtDuration, addMinutes, snap5 } from '../lib/utils.js';
@@ -64,20 +66,20 @@ function UndoRedoBtns() {
   );
 }
 
-export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory }) {
+export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory, userId, userColor, userFullName }) {
   const workshop = data.workshops[workshopId];
-  const project = data.projects.find((p) => p.id === workshop.projectId);
-  const [editingBlockId, setEditingBlockId] = useState(null);
-  const [collapsed, setCollapsed] = useState({});
-  const [editingPlanned, setEditingPlanned] = useState(false);
+  const project  = data.projects.find((p) => p.id === workshop.projectId);
 
+  const [editingBlockId,  setEditingBlockId]  = useState(null);
+  const [collapsed,       setCollapsed]       = useState({});
+  const [editingPlanned,  setEditingPlanned]  = useState(false);
   const [showPackingList, setShowPackingList] = useState(false);
 
-  const [drag, setDrag] = useState(null);
+  const [drag,       setDrag]       = useState(null);
   const blockDragRef = useRef(null);
-  const [dropOver, setDropOver] = useState(null);
-  const [secDrag, setSecDrag] = useState(null);
-  const [secDropAt, setSecDropAt] = useState(null);
+  const [dropOver,   setDropOver]   = useState(null);
+  const [secDrag,    setSecDrag]    = useState(null);
+  const [secDropAt,  setSecDropAt]  = useState(null);
 
   const totalMins = workshopTotal(data, workshopId);
   const blockOffsets = (() => {
@@ -90,9 +92,124 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     });
     return map;
   })();
+
   const editingBlock = editingBlockId ? data.blocks[editingBlockId] : null;
-  const editingMode = tweaks.editor;
+  const editingMode  = tweaks.editor;
   const sectionStyle = tweaks.sectionStyle;
+
+  // Close the editor automatically if the block was deleted by a remote user
+  useEffect(() => {
+    if (editingBlockId && !data.blocks[editingBlockId]) {
+      setEditingBlockId(null);
+    }
+  }, [data.blocks, editingBlockId]);
+
+  // ── Remote update handlers (no pushHistory — don't pollute local undo stack) ──
+
+  const handleRemoteBlockPatch = useCallback((blockId, patch) => {
+    onUpdateData((d) => {
+      if (!d.blocks[blockId]) return d;
+      return { ...d, blocks: { ...d.blocks, [blockId]: { ...d.blocks[blockId], ...patch } } };
+    });
+  }, [onUpdateData]);
+
+  const handleRemoteBlockAdd = useCallback((block, sectionId) => {
+    onUpdateData((d) => {
+      if (d.blocks[block.id]) return d; // already present (e.g. our own optimistic add)
+      const section = d.sections[sectionId];
+      if (!section) return d;
+      return {
+        ...d,
+        blocks:   { ...d.blocks,   [block.id]: block },
+        sections: { ...d.sections, [sectionId]: { ...section, blockIds: [...section.blockIds, block.id] } },
+      };
+    });
+  }, [onUpdateData]);
+
+  const handleRemoteBlockDelete = useCallback((blockId) => {
+    onUpdateData((d) => {
+      if (!d.blocks[blockId]) return d;
+      const newBlocks   = { ...d.blocks };   delete newBlocks[blockId];
+      const newSections = { ...d.sections };
+      Object.keys(newSections).forEach((sid) => {
+        if (newSections[sid].blockIds.includes(blockId)) {
+          newSections[sid] = { ...newSections[sid], blockIds: newSections[sid].blockIds.filter((x) => x !== blockId) };
+        }
+      });
+      return { ...d, blocks: newBlocks, sections: newSections };
+    });
+  }, [onUpdateData]);
+
+  const handleRemoteSectionAdd = useCallback((section, sectionIds) => {
+    onUpdateData((d) => {
+      if (d.sections[section.id]) return d;
+      return {
+        ...d,
+        sections:  { ...d.sections, [section.id]: section },
+        workshops: { ...d.workshops, [workshopId]: { ...d.workshops[workshopId], sectionIds } },
+      };
+    });
+  }, [onUpdateData, workshopId]);
+
+  const handleRemoteSectionDelete = useCallback((sectionId) => {
+    onUpdateData((d) => {
+      const sec = d.sections[sectionId];
+      if (!sec) return d;
+      const newBlocks   = { ...d.blocks };
+      sec.blockIds.forEach((bid) => delete newBlocks[bid]);
+      const newSections = { ...d.sections }; delete newSections[sectionId];
+      return {
+        ...d,
+        blocks:    newBlocks,
+        sections:  newSections,
+        workshops: { ...d.workshops, [workshopId]: { ...d.workshops[workshopId], sectionIds: d.workshops[workshopId].sectionIds.filter((x) => x !== sectionId) } },
+      };
+    });
+  }, [onUpdateData, workshopId]);
+
+  const handleRemoteSectionRename = useCallback((sectionId, title) => {
+    onUpdateData((d) => {
+      if (!d.sections[sectionId]) return d;
+      return { ...d, sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], title } } };
+    });
+  }, [onUpdateData]);
+
+  const handleRemoteBlockReorder = useCallback((blockOrders) => {
+    // blockOrders: { [sectionId]: blockIds[] }
+    onUpdateData((d) => {
+      const newSections = { ...d.sections };
+      Object.entries(blockOrders).forEach(([sid, blockIds]) => {
+        if (newSections[sid]) newSections[sid] = { ...newSections[sid], blockIds };
+      });
+      return { ...d, sections: newSections };
+    });
+  }, [onUpdateData]);
+
+  const handleRemoteSectionReorder = useCallback((sectionIds) => {
+    onUpdateData((d) => ({
+      ...d,
+      workshops: { ...d.workshops, [workshopId]: { ...d.workshops[workshopId], sectionIds } },
+    }));
+  }, [onUpdateData, workshopId]);
+
+  // ── Realtime hook ─────────────────────────────────────────────────────────
+
+  const { presence, locks, broadcast, trackField, untrackField } = useWorkshopRealtime({
+    workshopId,
+    userId,
+    fullName: userFullName,
+    color:    userColor,
+    onRemoteBlockPatch:     handleRemoteBlockPatch,
+    onRemoteBlockAdd:       handleRemoteBlockAdd,
+    onRemoteBlockDelete:    handleRemoteBlockDelete,
+    onRemoteSectionAdd:     handleRemoteSectionAdd,
+    onRemoteSectionDelete:  handleRemoteSectionDelete,
+    onRemoteSectionRename:  handleRemoteSectionRename,
+    onRemoteBlockReorder:   handleRemoteBlockReorder,
+    onRemoteSectionReorder: handleRemoteSectionReorder,
+  });
+
+  // ── Local mutations (each also broadcasts to other users) ─────────────────
 
   const patchBlock = async (id, patch) => {
     pushHistory();
@@ -104,7 +221,10 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     if ('material'    in patch) dbPatch.material    = patch.material    || null;
     if ('duration'    in patch) dbPatch.duration    = patch.duration;
     if (Object.keys(dbPatch).length) {
-      const { error } = await db.from('blocks').update(dbPatch).eq('id', id);
+      const [{ error }] = await Promise.all([
+        db.from('blocks').update(dbPatch).eq('id', id),
+        broadcast('block_patch', { blockId: id, patch }),
+      ]);
       if (error) toast('Save failed');
     }
   };
@@ -112,7 +232,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const deleteBlock = async (id) => {
     pushHistory();
     onUpdateData((d) => {
-      const newBlocks = { ...d.blocks }; delete newBlocks[id];
+      const newBlocks   = { ...d.blocks }; delete newBlocks[id];
       const newSections = { ...d.sections };
       Object.keys(newSections).forEach((sid) => {
         if (newSections[sid].blockIds.includes(id))
@@ -122,27 +242,33 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     });
     setEditingBlockId(null);
     toast('Block deleted');
-    await db.from('blocks').delete().eq('id', id);
+    await Promise.all([
+      db.from('blocks').delete().eq('id', id),
+      broadcast('block_delete', { blockId: id }),
+    ]);
   };
 
   const addBlock = async (sectionId) => {
     pushHistory();
     const id    = crypto.randomUUID();
-    const block = { id, duration: 15, title: 'New block', description: '', person: '', material: '' };
+    const block = { id, sectionId, duration: 15, title: 'New block', description: '', person: '', material: '' };
     const pos   = data.sections[sectionId]?.blockIds?.length || 0;
     onUpdateData((d) => ({
       ...d,
       blocks:   { ...d.blocks,   [id]: block },
-      sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], blockIds: [...d.sections[sectionId].blockIds, id] } }
+      sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], blockIds: [...d.sections[sectionId].blockIds, id] } },
     }));
     setEditingBlockId(id);
-    await db.from('blocks').insert({ id, section_id: sectionId, title: block.title, duration: block.duration, position: pos });
+    await Promise.all([
+      db.from('blocks').insert({ id, section_id: sectionId, title: block.title, duration: block.duration, position: pos }),
+      broadcast('block_add', { block, sectionId }),
+    ]);
   };
 
   const addSection = async (insertAtIndex = null) => {
     pushHistory();
     const id  = crypto.randomUUID();
-    const sec = { id, title: 'New section', blockIds: [] };
+    const sec = { id, workshopId, title: 'New section', blockIds: [] };
     let newIds;
     onUpdateData((d) => {
       const ws = d.workshops[workshopId];
@@ -153,13 +279,21 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     });
     const pos = insertAtIndex == null ? (data.workshops[workshopId]?.sectionIds.length || 0) : insertAtIndex;
     await db.from('sections').insert({ id, workshop_id: workshopId, title: sec.title, position: pos });
-    setTimeout(() => { if (newIds) syncSectionPositions(newIds).catch(() => {}); }, 0);
+    if (newIds) {
+      await Promise.all([
+        syncSectionPositions(newIds).catch(() => {}),
+        broadcast('section_add', { section: sec, sectionIds: newIds }),
+      ]);
+    }
   };
 
   const renameSection = async (id, title) => {
     pushHistory();
     onUpdateData((d) => ({ ...d, sections: { ...d.sections, [id]: { ...d.sections[id], title } } }));
-    await db.from('sections').update({ title }).eq('id', id);
+    await Promise.all([
+      db.from('sections').update({ title }).eq('id', id),
+      broadcast('section_rename', { sectionId: id, title }),
+    ]);
   };
 
   const renameWorkshop = async (title) => {
@@ -190,15 +324,18 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     pushHistory();
     onUpdateData((d) => {
       const sec = d.sections[id];
-      const newBlocks = { ...d.blocks }; sec.blockIds.forEach((bid) => delete newBlocks[bid]);
+      const newBlocks   = { ...d.blocks }; sec.blockIds.forEach((bid) => delete newBlocks[bid]);
       const newSections = { ...d.sections }; delete newSections[id];
       return {
         ...d, blocks: newBlocks, sections: newSections,
-        workshops: { ...d.workshops, [workshopId]: { ...d.workshops[workshopId], sectionIds: d.workshops[workshopId].sectionIds.filter((x) => x !== id) } }
+        workshops: { ...d.workshops, [workshopId]: { ...d.workshops[workshopId], sectionIds: d.workshops[workshopId].sectionIds.filter((x) => x !== id) } },
       };
     });
     toast('Section removed');
-    await db.from('sections').delete().eq('id', id);
+    await Promise.all([
+      db.from('sections').delete().eq('id', id),
+      broadcast('section_delete', { sectionId: id }),
+    ]);
   };
 
   const findBlockSection = (d, blockId) => {
@@ -218,7 +355,12 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
       newIds.splice(Math.max(0, Math.min(newIds.length, adjusted)), 0, sectionId);
       return { ...d, workshops: { ...d.workshops, [workshopId]: { ...ws, sectionIds: newIds } } };
     });
-    setTimeout(() => { if (newIds) syncSectionPositions(newIds).catch(() => {}); }, 0);
+    setTimeout(() => {
+      if (newIds) {
+        syncSectionPositions(newIds).catch(() => {});
+        broadcast('section_reorder', { sectionIds: newIds });
+      }
+    }, 0);
   };
 
   const moveBlock = async (blockId, toSectionId, beforeBlockId) => {
@@ -238,6 +380,9 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     });
     setTimeout(() => {
       Object.entries(affectedSections).forEach(([sid, ids]) => syncBlockPositions(sid, ids).catch(() => {}));
+      if (Object.keys(affectedSections).length) {
+        broadcast('block_reorder', { blockOrders: affectedSections });
+      }
     }, 0);
   };
 
@@ -247,252 +392,260 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // ── Context value for children (BlockEditor etc.) ─────────────────────────
+
+  const realtimeCtx = { presence, locks, trackField, untrackField, userId };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <div className="ws-page">
-      <header className="ws-header">
-        <div className="ws-header-inner">
-          <div className="ws-header-meta">
-            <div className="eyebrow" style={{ marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center', whiteSpace: 'nowrap' }}>
-              <a onClick={onBack} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>Projects</a>
-              <span style={{ color: 'var(--text-subtle)' }}>/</span>
-              <a onClick={onProject} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>{project.name}</a>
-            </div>
-            <ContentEditable className="ws-title" value={workshop.title} onChange={renameWorkshop} />
-            <div className="ws-header-row">
-              <label className="ws-date">
-                <Icon name="calendar" size={13} />
-                <input type="date" value={workshop.date} onChange={(e) => changeDate(e.target.value)} className="ws-date-input" />
-              </label>
-              <span style={{ color: 'var(--text-subtle)' }}>·</span>
-              <label className="ws-start-time">
-                <Icon name="clock" size={13} />
-                <input
-                  type="time" value={workshop.startTime || '09:00'}
-                  onChange={(e) => changeStartTime(e.target.value)}
-                  className="ws-start-time-input"
-                />
-              </label>
-              {totalMins > 0 && (
-                <>
-                  <span style={{ color: 'var(--text-subtle)' }}>·</span>
-                  <span className="ws-end-time">Ends {addMinutes(workshop.startTime || '09:00', totalMins)}</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="ws-header-total">
-            <div className="eyebrow">Total session</div>
-            <div className="ws-total-num serif">
-              <TickerNumber value={fmtDuration(totalMins)} isOver={totalMins > (workshop.plannedDuration || 0)} />
-            </div>
-            {editingPlanned ? (
-              <div className="ws-total-sub mono" style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                <input
-                  type="number" min="5" step="5"
-                  defaultValue={workshop.plannedDuration || totalMins}
-                  onBlur={(e) => { changePlannedDuration(parseInt(e.target.value || '5', 10)); setEditingPlanned(false); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditingPlanned(false); }}
-                  autoFocus
-                  style={{ width: 52, textAlign: 'right', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 4px', fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--surface)', outline: 'none' }}
-                />
-                <span>min planned</span>
+    <WorkshopRealtimeContext.Provider value={realtimeCtx}>
+      <div className="ws-page">
+        <header className="ws-header">
+          <div className="ws-header-inner">
+            <div className="ws-header-meta">
+              <div className="eyebrow" style={{ marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center', whiteSpace: 'nowrap' }}>
+                <a onClick={onBack} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>Projects</a>
+                <span style={{ color: 'var(--text-subtle)' }}>/</span>
+                <a onClick={onProject} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>{project.name}</a>
               </div>
-            ) : (
-              <div className="ws-total-sub mono" onClick={() => setEditingPlanned(true)} style={{ cursor: 'pointer' }} title="Click to edit planned duration">
-                {fmtDuration(workshop.plannedDuration || totalMins)} planned
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="ws-toolbar">
-          <div className="ws-toolbar-group">
-            <UndoRedoBtns />
-          </div>
-          <div style={{ flex: 1 }} />
-          <div className="ws-toolbar-group">
-            <button
-              className={'btn btn-ghost ws-tool' + (showPackingList ? ' is-active' : '')}
-              onClick={() => setShowPackingList((v) => !v)}
-              title="Packing list"
-              style={showPackingList ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent-border)' } : {}}
-            >
-              <Icon name="backpack" size={14} />
-              <span>Packing list</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className={'ws-agenda style-' + sectionStyle} onDragOver={(e) => { if (blockDragRef.current) e.preventDefault(); }}>
-        {workshop.sectionIds.map((sid, idx) => {
-          const section = data.sections[sid];
-          const isCollapsed = !!collapsed[sid];
-          const secTotal = section.blockIds.reduce((s, bid) => s + (data.blocks[bid]?.duration || 0), 0);
-
-          const InsertBar = (
-            <div className="sec-insert" onClick={() => addSection(idx)}>
-              <span className="sec-insert-line" />
-              <span className="sec-insert-btn"><Icon name="plus" size={12} /> Add section here</span>
-              <span className="sec-insert-line" />
-            </div>
-          );
-
-          const SecDropBar = (
-            <div
-              className={'sec-drop-bar' + (secDrag && secDropAt === idx ? ' is-active' : '')}
-              onDragOver={(e) => { if (secDrag) { e.preventDefault(); setSecDropAt(idx); } }}
-              onDrop={(e) => { if (secDrag) { e.preventDefault(); moveSection(secDrag, idx); setSecDrag(null); setSecDropAt(null); } }}
-            />
-          );
-
-          return (
-            <Fragment key={sid}>
-              {idx > 0 && !secDrag && !drag && InsertBar}
-              {secDrag && SecDropBar}
-
-              <section
-                className={'sec ' + (sectionStyle === 'cards' ? 'sec-card' : 'sec-flat') + (secDrag === sid ? ' is-section-dragging' : '')}
-                onDragOver={(e) => { if ((secDrag && secDrag !== sid) || blockDragRef.current) e.preventDefault(); }}
-              >
-                <span
-                  className="sec-grip"
-                  draggable
-                  onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'sec:' + sid); setSecDrag(sid); }}
-                  onDragEnd={() => { setSecDrag(null); setSecDropAt(null); }}
-                  title="Drag section to reorder"
-                >
-                  <Icon name="grip" size={12} />
-                </span>
-                <header className="sec-head">
-                  <button className="sec-toggle" onClick={() => setCollapsed((c) => ({ ...c, [sid]: !c[sid] }))}>
-                    <Icon name={isCollapsed ? 'chevron-right' : 'chevron-down'} size={14} />
-                  </button>
-                  <div className="sec-index mono">{String(idx + 1).padStart(2, '0')}</div>
-                  <ContentEditable className="sec-title" value={section.title} onChange={(v) => renameSection(sid, v)} />
-                  <div className="sec-duration mono" title="Section duration">
-                    <span className="sec-duration-num">{secTotal}</span>
-                    <span className="sec-duration-unit">min</span>
-                  </div>
-                  <div className="sec-actions">
-                    <button className="btn btn-icon" onClick={() => deleteSection(sid)} title="Delete section"><Icon name="trash" size={15} /></button>
-                  </div>
-                </header>
-
-                {!isCollapsed && (
-                  <div
-                    className="sec-body"
-                    onDragOver={(e) => {
-                      if (!blockDragRef.current) return;
-                      e.preventDefault();
-                      if (section.blockIds.length === 0) { setDropOver({ sectionId: sid, beforeBlockId: null }); }
-                    }}
-                    onDrop={(e) => {
-                      const d = blockDragRef.current;
-                      if (!d) return;
-                      if (section.blockIds.length === 0) {
-                        e.preventDefault();
-                        moveBlock(d.blockId, sid, null);
-                        blockDragRef.current = null; setDrag(null); setDropOver(null);
-                      }
-                    }}
-                  >
-                    {section.blockIds.length === 0 && (
-                      <button className={'sec-empty' + (drag && dropOver?.sectionId === sid ? ' is-drop-target' : '')} onClick={() => addBlock(sid)}>
-                        <Icon name="plus" size={14} />
-                        {drag ? 'Drop block here' : 'Empty section. Add the first block.'}
-                      </button>
-                    )}
-
-                    {section.blockIds.map((bid) => {
-                      const block = data.blocks[bid];
-                      const isEditing = editingBlockId === bid && editingMode === 'inline';
-                      const isDropTarget = dropOver && dropOver.sectionId === sid && dropOver.beforeBlockId === bid;
-                      return (
-                        <BlockRow
-                          key={bid}
-                          block={block}
-                          isEditing={isEditing}
-                          isDragging={drag?.blockId === bid}
-                          isDropTarget={isDropTarget}
-                          onOpen={() => setEditingBlockId(bid)}
-                          onChange={(patch) => patchBlock(bid, patch)}
-                          onClose={() => setEditingBlockId(null)}
-                          onDelete={() => deleteBlock(bid)}
-                          startTime={addMinutes(workshop.startTime || '09:00', blockOffsets[bid] || 0)}
-                          onDragStart={() => { const d = { blockId: bid, fromSection: sid }; blockDragRef.current = d; setDrag(d); }}
-                          onDragEnd={() => { blockDragRef.current = null; setDrag(null); setDropOver(null); }}
-                          onDragOver={(e) => {
-                            if (!blockDragRef.current) return;
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = 'move';
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const before = (e.clientY - rect.top) < rect.height / 2;
-                            const blockIds = data.sections[sid].blockIds;
-                            const ix = blockIds.indexOf(bid);
-                            const beforeBlockId = before ? bid : (blockIds[ix + 1] || null);
-                            setDropOver({ sectionId: sid, beforeBlockId });
-                          }}
-                          onDrop={(e) => {
-                            const d = blockDragRef.current;
-                            if (!d) return;
-                            e.preventDefault();
-                            if (dropOver) moveBlock(d.blockId, dropOver.sectionId, dropOver.beforeBlockId);
-                            blockDragRef.current = null; setDrag(null); setDropOver(null);
-                          }}
-                        />
-                      );
-                    })}
-
-                    {drag && section.blockIds.length > 0 && (
-                      <div
-                        className={'blk-drop-tail' + (dropOver?.sectionId === sid && dropOver?.beforeBlockId === null ? ' is-active' : '')}
-                        onDragOver={(e) => { e.preventDefault(); setDropOver({ sectionId: sid, beforeBlockId: null }); }}
-                        onDrop={(e) => { const d = blockDragRef.current; if (!d) return; e.preventDefault(); moveBlock(d.blockId, sid, null); blockDragRef.current = null; setDrag(null); setDropOver(null); }}
-                      />
-                    )}
-
-                    <button className="sec-add-row" onClick={() => addBlock(sid)}>
-                      <Icon name="plus" size={13} /> Add block to "{section.title}"
-                    </button>
-                  </div>
+              <ContentEditable className="ws-title" value={workshop.title} onChange={renameWorkshop} />
+              <div className="ws-header-row">
+                <label className="ws-date">
+                  <Icon name="calendar" size={13} />
+                  <input type="date" value={workshop.date} onChange={(e) => changeDate(e.target.value)} className="ws-date-input" />
+                </label>
+                <span style={{ color: 'var(--text-subtle)' }}>·</span>
+                <label className="ws-start-time">
+                  <Icon name="clock" size={13} />
+                  <input
+                    type="time" value={workshop.startTime || '09:00'}
+                    onChange={(e) => changeStartTime(e.target.value)}
+                    className="ws-start-time-input"
+                  />
+                </label>
+                {totalMins > 0 && (
+                  <>
+                    <span style={{ color: 'var(--text-subtle)' }}>·</span>
+                    <span className="ws-end-time">Ends {addMinutes(workshop.startTime || '09:00', totalMins)}</span>
+                  </>
                 )}
-              </section>
+              </div>
+            </div>
 
-              {secDrag && idx === workshop.sectionIds.length - 1 && (
-                <div
-                  className={'sec-drop-bar' + (secDropAt === workshop.sectionIds.length ? ' is-active' : '')}
-                  onDragOver={(e) => { e.preventDefault(); setSecDropAt(workshop.sectionIds.length); }}
-                  onDrop={(e) => { e.preventDefault(); moveSection(secDrag, workshop.sectionIds.length); setSecDrag(null); setSecDropAt(null); }}
-                />
+            <div className="ws-header-total">
+              <div className="eyebrow">Total session</div>
+              <div className="ws-total-num serif">
+                <TickerNumber value={fmtDuration(totalMins)} isOver={totalMins > (workshop.plannedDuration || 0)} />
+              </div>
+              {editingPlanned ? (
+                <div className="ws-total-sub mono" style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                  <input
+                    type="number" min="5" step="5"
+                    defaultValue={workshop.plannedDuration || totalMins}
+                    onBlur={(e) => { changePlannedDuration(parseInt(e.target.value || '5', 10)); setEditingPlanned(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditingPlanned(false); }}
+                    autoFocus
+                    style={{ width: 52, textAlign: 'right', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 4px', fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--surface)', outline: 'none' }}
+                  />
+                  <span>min planned</span>
+                </div>
+              ) : (
+                <div className="ws-total-sub mono" onClick={() => setEditingPlanned(true)} style={{ cursor: 'pointer' }} title="Click to edit planned duration">
+                  {fmtDuration(workshop.plannedDuration || totalMins)} planned
+                </div>
               )}
-            </Fragment>
-          );
-        })}
+            </div>
+          </div>
 
-        <button className="ws-add-section" onClick={() => addSection()}>
-          <Icon name="plus" size={16} /><span>Add a section</span>
-        </button>
-      </main>
+          <div className="ws-toolbar">
+            <div className="ws-toolbar-group">
+              <UndoRedoBtns />
+            </div>
+            <div style={{ flex: 1 }} />
+            <div className="ws-toolbar-group">
+              <button
+                className={'btn btn-ghost ws-tool' + (showPackingList ? ' is-active' : '')}
+                onClick={() => setShowPackingList((v) => !v)}
+                title="Packing list"
+                style={showPackingList ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent-border)' } : {}}
+              >
+                <Icon name="backpack" size={14} />
+                <span>Packing list</span>
+              </button>
+            </div>
+          </div>
+        </header>
 
-      {editingBlock && editingMode === 'panel' && (
-        <BlockEditor
-          mode="panel"
-          block={editingBlock}
-          onChange={(b) => patchBlock(editingBlockId, b)}
-          onClose={() => setEditingBlockId(null)}
-          onDelete={() => deleteBlock(editingBlockId)}
-        />
-      )}
+        <main className={'ws-agenda style-' + sectionStyle} onDragOver={(e) => { if (blockDragRef.current) e.preventDefault(); }}>
+          {workshop.sectionIds.map((sid, idx) => {
+            const section    = data.sections[sid];
+            const isCollapsed = !!collapsed[sid];
+            const secTotal   = section.blockIds.reduce((s, bid) => s + (data.blocks[bid]?.duration || 0), 0);
 
-      {showPackingList && (
-        <PackingList
-          data={data}
-          workshopId={workshopId}
-          onClose={() => setShowPackingList(false)}
-        />
-      )}
-    </div>
+            const InsertBar = (
+              <div className="sec-insert" onClick={() => addSection(idx)}>
+                <span className="sec-insert-line" />
+                <span className="sec-insert-btn"><Icon name="plus" size={12} /> Add section here</span>
+                <span className="sec-insert-line" />
+              </div>
+            );
+
+            const SecDropBar = (
+              <div
+                className={'sec-drop-bar' + (secDrag && secDropAt === idx ? ' is-active' : '')}
+                onDragOver={(e) => { if (secDrag) { e.preventDefault(); setSecDropAt(idx); } }}
+                onDrop={(e) => { if (secDrag) { e.preventDefault(); moveSection(secDrag, idx); setSecDrag(null); setSecDropAt(null); } }}
+              />
+            );
+
+            return (
+              <Fragment key={sid}>
+                {idx > 0 && !secDrag && !drag && InsertBar}
+                {secDrag && SecDropBar}
+
+                <section
+                  className={'sec ' + (sectionStyle === 'cards' ? 'sec-card' : 'sec-flat') + (secDrag === sid ? ' is-section-dragging' : '')}
+                  onDragOver={(e) => { if ((secDrag && secDrag !== sid) || blockDragRef.current) e.preventDefault(); }}
+                >
+                  <span
+                    className="sec-grip"
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'sec:' + sid); setSecDrag(sid); }}
+                    onDragEnd={() => { setSecDrag(null); setSecDropAt(null); }}
+                    title="Drag section to reorder"
+                  >
+                    <Icon name="grip" size={12} />
+                  </span>
+                  <header className="sec-head">
+                    <button className="sec-toggle" onClick={() => setCollapsed((c) => ({ ...c, [sid]: !c[sid] }))}>
+                      <Icon name={isCollapsed ? 'chevron-right' : 'chevron-down'} size={14} />
+                    </button>
+                    <div className="sec-index mono">{String(idx + 1).padStart(2, '0')}</div>
+                    <ContentEditable className="sec-title" value={section.title} onChange={(v) => renameSection(sid, v)} />
+                    <div className="sec-duration mono" title="Section duration">
+                      <span className="sec-duration-num">{secTotal}</span>
+                      <span className="sec-duration-unit">min</span>
+                    </div>
+                    <div className="sec-actions">
+                      <button className="btn btn-icon" onClick={() => deleteSection(sid)} title="Delete section"><Icon name="trash" size={15} /></button>
+                    </div>
+                  </header>
+
+                  {!isCollapsed && (
+                    <div
+                      className="sec-body"
+                      onDragOver={(e) => {
+                        if (!blockDragRef.current) return;
+                        e.preventDefault();
+                        if (section.blockIds.length === 0) { setDropOver({ sectionId: sid, beforeBlockId: null }); }
+                      }}
+                      onDrop={(e) => {
+                        const d = blockDragRef.current;
+                        if (!d) return;
+                        if (section.blockIds.length === 0) {
+                          e.preventDefault();
+                          moveBlock(d.blockId, sid, null);
+                          blockDragRef.current = null; setDrag(null); setDropOver(null);
+                        }
+                      }}
+                    >
+                      {section.blockIds.length === 0 && (
+                        <button className={'sec-empty' + (drag && dropOver?.sectionId === sid ? ' is-drop-target' : '')} onClick={() => addBlock(sid)}>
+                          <Icon name="plus" size={14} />
+                          {drag ? 'Drop block here' : 'Empty section. Add the first block.'}
+                        </button>
+                      )}
+
+                      {section.blockIds.map((bid) => {
+                        const block        = data.blocks[bid];
+                        const isEditing    = editingBlockId === bid && editingMode === 'inline';
+                        const isDropTarget = dropOver && dropOver.sectionId === sid && dropOver.beforeBlockId === bid;
+                        return (
+                          <BlockRow
+                            key={bid}
+                            block={block}
+                            isEditing={isEditing}
+                            isDragging={drag?.blockId === bid}
+                            isDropTarget={isDropTarget}
+                            onOpen={() => setEditingBlockId(bid)}
+                            onChange={(patch) => patchBlock(bid, patch)}
+                            onClose={() => setEditingBlockId(null)}
+                            onDelete={() => deleteBlock(bid)}
+                            startTime={addMinutes(workshop.startTime || '09:00', blockOffsets[bid] || 0)}
+                            onDragStart={() => { const d = { blockId: bid, fromSection: sid }; blockDragRef.current = d; setDrag(d); }}
+                            onDragEnd={() => { blockDragRef.current = null; setDrag(null); setDropOver(null); }}
+                            onDragOver={(e) => {
+                              if (!blockDragRef.current) return;
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const before = (e.clientY - rect.top) < rect.height / 2;
+                              const blockIds = data.sections[sid].blockIds;
+                              const ix = blockIds.indexOf(bid);
+                              const beforeBlockId = before ? bid : (blockIds[ix + 1] || null);
+                              setDropOver({ sectionId: sid, beforeBlockId });
+                            }}
+                            onDrop={(e) => {
+                              const d = blockDragRef.current;
+                              if (!d) return;
+                              e.preventDefault();
+                              if (dropOver) moveBlock(d.blockId, dropOver.sectionId, dropOver.beforeBlockId);
+                              blockDragRef.current = null; setDrag(null); setDropOver(null);
+                            }}
+                          />
+                        );
+                      })}
+
+                      {drag && section.blockIds.length > 0 && (
+                        <div
+                          className={'blk-drop-tail' + (dropOver?.sectionId === sid && dropOver?.beforeBlockId === null ? ' is-active' : '')}
+                          onDragOver={(e) => { e.preventDefault(); setDropOver({ sectionId: sid, beforeBlockId: null }); }}
+                          onDrop={(e) => { const d = blockDragRef.current; if (!d) return; e.preventDefault(); moveBlock(d.blockId, sid, null); blockDragRef.current = null; setDrag(null); setDropOver(null); }}
+                        />
+                      )}
+
+                      <button className="sec-add-row" onClick={() => addBlock(sid)}>
+                        <Icon name="plus" size={13} /> Add block to "{section.title}"
+                      </button>
+                    </div>
+                  )}
+                </section>
+
+                {secDrag && idx === workshop.sectionIds.length - 1 && (
+                  <div
+                    className={'sec-drop-bar' + (secDropAt === workshop.sectionIds.length ? ' is-active' : '')}
+                    onDragOver={(e) => { e.preventDefault(); setSecDropAt(workshop.sectionIds.length); }}
+                    onDrop={(e) => { e.preventDefault(); moveSection(secDrag, workshop.sectionIds.length); setSecDrag(null); setSecDropAt(null); }}
+                  />
+                )}
+              </Fragment>
+            );
+          })}
+
+          <button className="ws-add-section" onClick={() => addSection()}>
+            <Icon name="plus" size={16} /><span>Add a section</span>
+          </button>
+        </main>
+
+        {editingBlock && editingMode === 'panel' && (
+          <BlockEditor
+            mode="panel"
+            block={editingBlock}
+            onChange={(b) => patchBlock(editingBlockId, b)}
+            onClose={() => setEditingBlockId(null)}
+            onDelete={() => deleteBlock(editingBlockId)}
+          />
+        )}
+
+        {showPackingList && (
+          <PackingList
+            data={data}
+            workshopId={workshopId}
+            onClose={() => setShowPackingList(false)}
+          />
+        )}
+      </div>
+    </WorkshopRealtimeContext.Provider>
   );
 }

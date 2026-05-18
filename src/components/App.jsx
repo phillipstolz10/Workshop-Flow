@@ -8,11 +8,13 @@ import ProfileView from './ProfileView.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { useTweaks } from '../hooks/useTweaks.js';
 import { db } from '../lib/supabase.js';
-import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead } from '../lib/db.js';
+import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, setPresenceColor, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead } from '../lib/db.js';
 import NamePromptModal from './NamePromptModal.jsx';
 import NotificationPanel from './NotificationPanel.jsx';
 
 const TWEAK_DEFAULTS = { density: 'comfortable', sectionStyle: 'cards', editor: 'panel' };
+
+const PRESENCE_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#ec4899', '#14b8a6'];
 
 function getInitials(fullName, email) {
   if (fullName?.trim()) {
@@ -76,7 +78,14 @@ export default function App() {
           getProfile(user.id).catch(() => null),
           getNotifications(user.id).catch(() => []),
         ]);
-        setProfile(prof);
+        // Assign a presence color once per user if they don't have one yet
+        let finalProf = prof;
+        if (!prof?.presence_color) {
+          const color = PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)];
+          await setPresenceColor(user.id, color).catch(() => {});
+          finalProf = { ...(prof || {}), presence_color: color };
+        }
+        setProfile(finalProf);
         setProfileReady(true);
         setNotifications(notifs);
       }
@@ -373,6 +382,9 @@ export default function App() {
             tweaks={tweaks}
             toast={showToast}
             pushHistory={pushHistory}
+            userId={session.user.id}
+            userColor={profile?.presence_color}
+            userFullName={profile?.full_name}
           />
         }
         {view.name === 'profile' &&

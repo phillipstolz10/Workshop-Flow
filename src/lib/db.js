@@ -175,12 +175,17 @@ export async function markAllNotificationsRead(userId) {
 }
 
 export async function getProfile(userId) {
-  const { data } = await db.from('profiles').select('full_name').eq('id', userId).single();
+  const { data } = await db.from('profiles').select('full_name, presence_color').eq('id', userId).single();
   return data || null;
 }
 
 export async function upsertProfile(userId, fullName) {
   const { error } = await db.from('profiles').upsert({ id: userId, full_name: fullName });
+  if (error) throw error;
+}
+
+export async function setPresenceColor(userId, color) {
+  const { error } = await db.from('profiles').upsert({ id: userId, presence_color: color });
   if (error) throw error;
 }
 
