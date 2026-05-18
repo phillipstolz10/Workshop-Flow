@@ -139,7 +139,14 @@ export function useWorkshopRealtime({
       active = false;
       channelRef.current = null;
       myLocksRef.current.clear();
-      channel.untrack().catch(() => {}).finally(() => db.removeChannel(channel));
+      // Remove the channel synchronously so the Supabase client drops it from
+      // its registry immediately. In React Strict Mode the cleanup and the next
+      // mount run back-to-back; if removeChannel is deferred (chained after
+      // untrack), the second mount calls db.channel() with the same name and
+      // gets back the already-subscribed instance — adding presence listeners
+      // to it then throws "cannot add presence callbacks after subscribe()".
+      channel.untrack().catch(() => {}); // fire-and-forget — presence clears when channel closes
+      db.removeChannel(channel);       // synchronous registry removal
     };
   }, [workshopId, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
