@@ -212,13 +212,16 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
   display: flex; align-items: center;
 }
 .dash-row-desc { color: var(--text-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-row-arrow { color: var(--text-subtle); display: inline-flex; transition: transform 140ms ease, color 140ms ease; }
-.dash-row-deletable { position: relative; }
-.dash-row-delete {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  opacity: 0; transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+.dash-row-end {
+  display: flex; align-items: center; justify-content: flex-end;
 }
-.dash-row-deletable:hover .dash-row-delete { opacity: 1; }
+.dash-row-arrow { color: var(--text-subtle); display: inline-flex; transition: transform 140ms ease, color 140ms ease; }
+.dash-row-delete {
+  display: none;
+  transition: color 120ms ease, background 120ms ease;
+}
+.dash-row-deletable:hover .dash-row-delete { display: inline-flex; }
+.dash-row-deletable:hover .dash-row-arrow { display: none; }
 .dash-row-delete:hover { color: var(--danger) !important; background: #fef2f2 !important; }
 
 .dash-row-new {

@@ -29,18 +29,18 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
               </div>
               <div className="dash-row-desc">{p.description}</div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="dash-row-end">
               <span className="dash-row-arrow"><Icon name="arrow-right" size={16} /></span>
+              {p.userId === userId && (
+                <button
+                  className="btn btn-icon dash-row-delete"
+                  onClick={(e) => { e.stopPropagation(); setPendingDelete(p); }}
+                  title="Delete project"
+                >
+                  <Icon name="trash" size={14} />
+                </button>
+              )}
             </div>
-            {p.userId === userId && (
-              <button
-                className="btn btn-icon dash-row-delete"
-                onClick={(e) => { e.stopPropagation(); setPendingDelete(p); }}
-                title="Delete project"
-              >
-                <Icon name="trash" size={14} />
-              </button>
-            )}
           </div>
         ))}
         <button className="dash-row-new" onClick={onNewProject}>
