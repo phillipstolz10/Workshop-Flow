@@ -259,10 +259,7 @@ export default function App() {
             </a>
           </div>
           <div className="topnav-right">
-            {profile?.full_name && (
-              <span className="topnav-name">{profile.full_name}</span>
-            )}
-            <button className="avatar-btn" onClick={() => navigateTo({ name: 'profile' })}
+<button className="avatar-btn" onClick={() => navigateTo({ name: 'profile' })}
               title={profile?.full_name || session?.user?.email || 'Account'}>
               {getInitials(profile?.full_name, session?.user?.email)}
             </button>
