@@ -8,7 +8,7 @@ import ProfileView from './ProfileView.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { useTweaks } from '../hooks/useTweaks.js';
 import { db } from '../lib/supabase.js';
-import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile } from '../lib/db.js';
+import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, acceptPendingInvitations } from '../lib/db.js';
 import NamePromptModal from './NamePromptModal.jsx';
 
 const TWEAK_DEFAULTS = { density: 'comfortable', sectionStyle: 'cards', editor: 'panel' };
@@ -56,6 +56,8 @@ export default function App() {
     loadStartedRef.current = true;
     setLoading(true); setDbError(null);
     try {
+      // Auto-accept any pending invitations before loading so shared projects appear immediately
+      if (user) await acceptPendingInvitations(user.id).catch(() => {});
       let d = await loadAllData();
       if (user && d.projects.length === 0) {
         const flag = `wf_seeded_${user.id}`;
@@ -267,12 +269,15 @@ export default function App() {
         </nav>
 
         {view.name === 'dashboard' &&
-          <Dashboard data={data} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} />
+          <Dashboard data={data} userId={session.user.id} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} />
         }
         {view.name === 'project' &&
           <ProjectView
             data={data}
             projectId={view.projectId}
+            userId={session.user.id}
+            session={session}
+            profile={profile}
             onOpenWorkshop={goWorkshop}
             onNewWorkshop={() => newWorkshop(view.projectId)}
             onDeleteWorkshop={deleteWorkshop}

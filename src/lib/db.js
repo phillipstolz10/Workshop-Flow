@@ -9,6 +9,7 @@ export function dbToAppData(projects, workshops, sections, blocks) {
   return {
     projects: (projects || []).map(p => ({
       id: p.id, name: p.name, description: p.description || '',
+      userId: p.user_id,
       workshopIds: (wssByProj[p.id] || []).sort((a,b) => a.position - b.position).map(w => w.id)
     })),
     workshops: Object.fromEntries((workshops || []).map(w => [w.id, {
@@ -94,6 +95,50 @@ export async function applyStateDiff(fromState, toState) {
     })
   );
   if (blkRows.length) await db.from('blocks').upsert(blkRows);
+}
+
+// ── Project membership ──────────────────────────────────────────────────────
+
+export async function acceptPendingInvitations(userId) {
+  await db.from('project_members')
+    .update({ status: 'accepted' })
+    .eq('user_id', userId)
+    .eq('status', 'pending');
+}
+
+export async function getProjectMembers(projectId) {
+  const { data, error } = await db
+    .from('project_members')
+    .select('id, user_id, role, status, invited_email, created_at')
+    .eq('project_id', projectId)
+    .order('created_at');
+  if (error) throw error;
+  return data || [];
+}
+
+export async function inviteToProject(projectId, invitedByUserId, email) {
+  const trimmed = email.toLowerCase().trim();
+
+  // Look up user by email via RPC (needs SECURITY DEFINER to read auth.users)
+  const { data: foundId, error: rpcErr } = await db.rpc('get_user_id_by_email', {
+    email_input: trimmed,
+  });
+  if (rpcErr) throw rpcErr;
+  if (!foundId) throw new Error('NO_ACCOUNT');
+  if (foundId === invitedByUserId) throw new Error('SELF_INVITE');
+
+  const { error } = await db.from('project_members').insert({
+    project_id: projectId,
+    user_id: foundId,
+    invited_by: invitedByUserId,
+    invited_email: trimmed,
+    role: 'editor',
+    status: 'pending',
+  });
+  if (error) {
+    if (error.code === '23505') throw new Error('ALREADY_INVITED');
+    throw error;
+  }
 }
 
 export async function getProfile(userId) {
