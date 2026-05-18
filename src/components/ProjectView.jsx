@@ -19,33 +19,24 @@ export default function ProjectView({ data, projectId, userId, session, profile,
             <span style={{ color: 'var(--text-subtle)' }}>/</span>
             <span style={{ color: 'var(--text)' }}>This project</span>
           </div>
-          {isOwner ? (
-            <>
-              <h1
-                className="page-title ce"
-                contentEditable suppressContentEditableWarning
-                onBlur={(e) => { const v = e.currentTarget.textContent.trim(); if (v) onUpdateProject(projectId, { name: v }); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
-                style={{ outline: 'none', borderRadius: 6, padding: '2px 6px', marginLeft: -6, cursor: 'text' }}
-                onFocus={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; }}
-                onBlurCapture={(e) => { e.currentTarget.style.background = ''; }}
-              >{project.name}</h1>
-              <p
-                className="page-sub ce"
-                contentEditable suppressContentEditableWarning
-                onBlur={(e) => { const v = e.currentTarget.textContent.trim(); if (v) onUpdateProject(projectId, { description: v }); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
-                style={{ outline: 'none', borderRadius: 6, padding: '2px 6px', marginLeft: -6, cursor: 'text' }}
-                onFocus={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; }}
-                onBlurCapture={(e) => { e.currentTarget.style.background = ''; }}
-              >{project.description}</p>
-            </>
-          ) : (
-            <>
-              <h1 className="page-title" style={{ padding: '2px 6px', marginLeft: -6 }}>{project.name}</h1>
-              {project.description && <p className="page-sub" style={{ padding: '2px 6px', marginLeft: -6 }}>{project.description}</p>}
-            </>
-          )}
+          <h1
+            className="page-title ce"
+            contentEditable suppressContentEditableWarning
+            onBlur={(e) => { const v = e.currentTarget.textContent.trim(); if (v) onUpdateProject(projectId, { name: v }); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+            style={{ outline: 'none', borderRadius: 6, padding: '2px 6px', marginLeft: -6, cursor: 'text' }}
+            onFocus={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; }}
+            onBlurCapture={(e) => { e.currentTarget.style.background = ''; }}
+          >{project.name}</h1>
+          <p
+            className="page-sub ce"
+            contentEditable suppressContentEditableWarning
+            onBlur={(e) => { const v = e.currentTarget.textContent.trim(); if (v) onUpdateProject(projectId, { description: v }); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+            style={{ outline: 'none', borderRadius: 6, padding: '2px 6px', marginLeft: -6, cursor: 'text' }}
+            onFocus={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; }}
+            onBlurCapture={(e) => { e.currentTarget.style.background = ''; }}
+          >{project.description}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           {isOwner && (
