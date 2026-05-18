@@ -209,7 +209,7 @@ export default function App() {
 
   const newProject = async () => {
     const id = crypto.randomUUID();
-    const p  = { id, name: 'Untitled project', description: 'Add a short description.', workshopIds: [] };
+    const p  = { id, name: 'Untitled project', description: 'Add a short description.', userId: session.user.id, workshopIds: [] };
     setData((d) => ({ ...d, projects: [p, ...d.projects] }));
     navigateTo({ name: 'project', projectId: id });
     const { error } = await db.from('projects').insert({ id, name: p.name, description: p.description });
