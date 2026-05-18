@@ -128,10 +128,17 @@ export default function SharePanel({ projectId, session, profile, onClose }) {
                 members.map((m) => (
                   <li key={m.id} className="sp-member">
                     <div className="sp-member-avatar sp-member-avatar-muted">
-                      {(m.invited_email?.[0] ?? '?').toUpperCase()}
+                      {getInitials(m.full_name, m.invited_email)}
                     </div>
                     <div className="sp-member-info">
-                      <div className="sp-member-name">{m.invited_email}</div>
+                      {m.full_name ? (
+                        <>
+                          <div className="sp-member-name">{m.full_name}</div>
+                          <div className="sp-member-email">{m.invited_email}</div>
+                        </>
+                      ) : (
+                        <div className="sp-member-name">{m.invited_email}</div>
+                      )}
                     </div>
                     <span className="sp-badge sp-badge-role">Editor</span>
                     <span className={`sp-badge ${m.status === 'accepted' ? 'sp-badge-accepted' : 'sp-badge-pending'}`}>

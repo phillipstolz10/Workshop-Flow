@@ -113,7 +113,19 @@ export async function getProjectMembers(projectId) {
     .eq('project_id', projectId)
     .order('created_at');
   if (error) throw error;
-  return data || [];
+  if (!data?.length) return [];
+
+  // Fetch display names from profiles for all member user IDs
+  const userIds = data.map((m) => m.user_id).filter(Boolean);
+  const { data: profiles } = await db
+    .from('profiles')
+    .select('id, full_name')
+    .in('id', userIds);
+
+  const nameMap = {};
+  (profiles || []).forEach((p) => { nameMap[p.id] = p.full_name || null; });
+
+  return data.map((m) => ({ ...m, full_name: nameMap[m.user_id] || null }));
 }
 
 export async function inviteToProject(projectId, invitedByUserId, email) {
