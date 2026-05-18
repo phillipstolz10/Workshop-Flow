@@ -153,6 +153,27 @@ export async function inviteToProject(projectId, invitedByUserId, email) {
   }
 }
 
+// ── Notifications ────────────────────────────────────────────────────────────
+
+export async function getNotifications(userId) {
+  const { data, error } = await db
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function markNotificationRead(id) {
+  await db.from('notifications').update({ read: true }).eq('id', id);
+}
+
+export async function markAllNotificationsRead(userId) {
+  await db.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
+}
+
 export async function getProfile(userId) {
   const { data } = await db.from('profiles').select('full_name').eq('id', userId).single();
   return data || null;

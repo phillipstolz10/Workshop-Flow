@@ -8,8 +8,9 @@ import ProfileView from './ProfileView.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { useTweaks } from '../hooks/useTweaks.js';
 import { db } from '../lib/supabase.js';
-import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, acceptPendingInvitations } from '../lib/db.js';
+import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead } from '../lib/db.js';
 import NamePromptModal from './NamePromptModal.jsx';
+import NotificationPanel from './NotificationPanel.jsx';
 
 const TWEAK_DEFAULTS = { density: 'comfortable', sectionStyle: 'cards', editor: 'panel' };
 
@@ -48,6 +49,8 @@ export default function App() {
 
   const [profile,      setProfile]      = useState(null);
   const [profileReady, setProfileReady] = useState(false);
+  const [notifications,      setNotifications]      = useState([]);
+  const [showNotifications,  setShowNotifications]  = useState(false);
 
   const loadStartedRef = useRef(false);
 
@@ -67,11 +70,15 @@ export default function App() {
           d = await loadAllData();
         }
       }
-      // Load profile
+      // Load profile + notifications
       if (user) {
-        const prof = await getProfile(user.id).catch(() => null);
+        const [prof, notifs] = await Promise.all([
+          getProfile(user.id).catch(() => null),
+          getNotifications(user.id).catch(() => []),
+        ]);
         setProfile(prof);
         setProfileReady(true);
+        setNotifications(notifs);
       }
       setData(d); setLoading(false);
     } catch (e) {
@@ -93,6 +100,8 @@ export default function App() {
         setData(null);
         setProfile(null);
         setProfileReady(false);
+        setNotifications([]);
+        setShowNotifications(false);
         setView({ name: 'dashboard' });
         undoStack.current = [];
         redoStack.current = [];
@@ -141,6 +150,43 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, redo]);
+
+  // Realtime: stream new notifications for this user
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const channel = db
+      .channel(`notifs:${session.user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${session.user.id}`,
+      }, (payload) => {
+        setNotifications((prev) => [payload.new, ...prev]);
+      })
+      .subscribe();
+    return () => { db.removeChannel(channel); };
+  }, [session?.user?.id]);
+
+  const markNotifRead = async (id) => {
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+    await markNotificationRead(id).catch(() => {});
+  };
+
+  const markAllNotifsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    await markAllNotificationsRead(session.user.id).catch(() => {});
+  };
+
+  const handleNotifNavigate = async (notif) => {
+    if (notif.type === 'project_invitation' && notif.metadata?.project_id) {
+      // Accept pending invitations and reload so shared project is in data
+      await acceptPendingInvitations(session.user.id).catch(() => {});
+      const fresh = await loadAllData().catch(() => null);
+      if (fresh) setData(fresh);
+      navigateTo({ name: 'project', projectId: notif.metadata.project_id });
+    }
+  };
 
   useEffect(() => {
     window.history.replaceState({ name: 'dashboard' }, '');
@@ -261,7 +307,19 @@ export default function App() {
             </a>
           </div>
           <div className="topnav-right">
-<button className="avatar-btn" onClick={() => navigateTo({ name: 'profile' })}
+            <button
+              className={'notif-bell' + (showNotifications ? ' is-active' : '')}
+              onClick={() => setShowNotifications((v) => !v)}
+              title="Notifications"
+            >
+              <Icon name="bell" size={17} />
+              {notifications.filter((n) => !n.read).length > 0 && (
+                <span className="notif-badge">
+                  {notifications.filter((n) => !n.read).length > 9 ? '9+' : notifications.filter((n) => !n.read).length}
+                </span>
+              )}
+            </button>
+            <button className="avatar-btn" onClick={() => navigateTo({ name: 'profile' })}
               title={profile?.full_name || session?.user?.email || 'Account'}>
               {getInitials(profile?.full_name, session?.user?.email)}
             </button>
@@ -310,6 +368,16 @@ export default function App() {
           <div className="toast">
             <Icon name="check" size={14} />{toastMsg}
           </div>
+        )}
+
+        {showNotifications && (
+          <NotificationPanel
+            notifications={notifications}
+            onMarkRead={markNotifRead}
+            onMarkAllRead={markAllNotifsRead}
+            onNavigate={handleNotifNavigate}
+            onClose={() => setShowNotifications(false)}
+          />
         )}
 
         {profileReady && !profile?.full_name?.trim() && (
