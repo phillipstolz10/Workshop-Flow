@@ -308,6 +308,19 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
   outline: none; font-family: var(--font-mono); font-feature-settings: "tnum";
 }
 
+.ws-start-time {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 4px 8px; border-radius: 6px;
+  font-family: var(--font-mono); font-size: 13px; color: var(--accent);
+}
+.ws-start-time:hover { background: var(--surface-2); }
+.ws-start-time-input {
+  border: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: inherit;
+  outline: none; font-family: var(--font-mono); font-feature-settings: "tnum"; width: 48px;
+}
+.ws-end-time { color: var(--text-muted); font-family: var(--font-mono); font-size: 13px; }
+.blk-start-time { font-size: 10px; color: var(--text-subtle); font-family: var(--font-mono); line-height: 1.2; text-align: right; margin-top: 1px; }
+
 .ws-header-total {
   text-align: right; padding: 14px 18px; border-left: 1px solid var(--border);
   padding-left: 28px; min-width: 200px; white-space: nowrap;
@@ -713,7 +726,7 @@ window.dbToAppData = function (projects, workshops, sections, blocks) {
     })),
     workshops: Object.fromEntries((workshops || []).map(w => [w.id, {
       id: w.id, projectId: w.project_id, title: w.title, date: w.date || '',
-      plannedDuration: w.planned_duration || 0,
+      plannedDuration: w.planned_duration || 0, startTime: w.start_time || '09:00',
       sectionIds: (sectsByWs[w.id] || []).sort((a,b) => a.position - b.position).map(s => s.id)
     }])),
     sections: Object.fromEntries((sections || []).map(s => [s.id, {
@@ -771,7 +784,7 @@ window.applyStateDiff = async function (fromState, toState) {
   if (delWs.length) await window.db.from('workshops').delete().in('id', delWs);
   const wsRows = toState.projects.flatMap(p => p.workshopIds.map((wid, i) => {
     const w = toState.workshops[wid];
-    return { id: w.id, project_id: w.projectId, title: w.title, date: w.date || null, planned_duration: w.plannedDuration || 0, position: i };
+    return { id: w.id, project_id: w.projectId, title: w.title, date: w.date || null, planned_duration: w.plannedDuration || 0, start_time: w.startTime || '09:00', position: i };
   }));
   if (wsRows.length) await window.db.from('workshops').upsert(wsRows);
 
@@ -1121,6 +1134,14 @@ window.fmtHHMM = (mins) => {
   const m = mins % 60;
   return `${h}:${String(m).padStart(2, '0')}`;
 };
+window.addMinutes = (hhmm, mins) => {
+  const parts = (hhmm || '09:00').split(':');
+  const base = parseInt(parts[0], 10) * 60 + parseInt(parts[1] || '0', 10);
+  const total = base + (mins || 0);
+  const h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+};
 window.fmtDuration = (mins) => {
   if (mins < 60) return `${mins}m`;
   const h = Math.floor(mins / 60), m = mins % 60;
@@ -1251,6 +1272,7 @@ const BlockRow = ({
   block, isEditing, isDragging, isDropTarget,
   onHover, onOpen, onChange, onClose, onDelete,
   onDragStart, onDragEnd, onDragOver, onDrop,
+  startTime,
 }) => {
   const [durOpen, setDurOpen] = React.useState(false);
   const popoverRef = React.useRef(null);
@@ -1297,6 +1319,7 @@ const BlockRow = ({
               title="Click to adjust"
             >
               {block.duration}<span className="blk-duration-unit">m</span>
+              {startTime && <div className="blk-start-time">{startTime}</div>}
               {durOpen && (
                 <div className="blk-dur-pop" ref={popoverRef} onClick={(e) => e.stopPropagation()}>
                   <button className="blk-dur-step" onClick={() => adjust(-5)}>−</button>
@@ -1533,11 +1556,22 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
   const [editingPlanned, setEditingPlanned] = React.useState(false);
 
   const [drag, setDrag] = React.useState(null);
+  const blockDragRef = React.useRef(null); // mirrors drag synchronously for onDragOver
   const [dropOver, setDropOver] = React.useState(null);
   const [secDrag, setSecDrag] = React.useState(null);
   const [secDropAt, setSecDropAt] = React.useState(null);
 
   const totalMins = window.workshopTotal(data, workshopId);
+  const blockOffsets = (() => {
+    const map = {}; let cum = 0;
+    workshop.sectionIds.forEach(sid => {
+      (data.sections[sid]?.blockIds || []).forEach(bid => {
+        map[bid] = cum;
+        cum += data.blocks[bid]?.duration || 0;
+      });
+    });
+    return map;
+  })();
   const editingBlock = editingBlockId ? data.blocks[editingBlockId] : null;
   const editingMode = tweaks.editor;
   const sectionStyle = tweaks.sectionStyle;
@@ -1624,6 +1658,10 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
     onUpdateData((d) => ({ ...d, workshops: { ...d.workshops, [workshopId]: { ...d.workshops[workshopId], date } } }));
     await window.db.from('workshops').update({ date: date || null }).eq('id', workshopId);
   };
+  const changeStartTime = async (startTime) => {
+    onUpdateData((d) => ({ ...d, workshops: { ...d.workshops, [workshopId]: { ...d.workshops[workshopId], startTime } } }));
+    await window.db.from('workshops').update({ start_time: startTime }).eq('id', workshopId);
+  };
   const deleteSection = async (id) => {
     pushHistory();
     onUpdateData((d) => {
@@ -1701,6 +1739,21 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
                 <Icon name="calendar" size={13}/>
                 <input type="date" value={workshop.date} onChange={(e) => changeDate(e.target.value)} className="ws-date-input"/>
               </label>
+              <span style={{ color: "var(--text-subtle)" }}>·</span>
+              <label className="ws-start-time">
+                <Icon name="clock" size={13}/>
+                <input
+                  type="time" value={workshop.startTime || '09:00'}
+                  onChange={(e) => changeStartTime(e.target.value)}
+                  className="ws-start-time-input"
+                />
+              </label>
+              {totalMins > 0 && (
+                <>
+                  <span style={{ color: "var(--text-subtle)" }}>·</span>
+                  <span className="ws-end-time">Ends {window.addMinutes(workshop.startTime || '09:00', totalMins)}</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -1766,7 +1819,7 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
 
               <section
                 className={"sec " + (sectionStyle === "cards" ? "sec-card" : "sec-flat") + (secDrag === sid ? " is-section-dragging" : "")}
-                onDragOver={(e) => { if (secDrag && secDrag !== sid) e.preventDefault(); }}
+                onDragOver={(e) => { if ((secDrag && secDrag !== sid) || blockDragRef.current) e.preventDefault(); }}
               >
                 <span
                   className="sec-grip"
@@ -1796,12 +1849,14 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
                   <div
                     className="sec-body"
                     onDragOver={(e) => {
-                      if (!drag) return;
-                      if (section.blockIds.length === 0) { e.preventDefault(); setDropOver({ sectionId: sid, beforeBlockId: null }); }
+                      if (!blockDragRef.current) return;
+                      e.preventDefault();
+                      if (section.blockIds.length === 0) { setDropOver({ sectionId: sid, beforeBlockId: null }); }
                     }}
                     onDrop={(e) => {
-                      if (!drag) return;
-                      if (section.blockIds.length === 0) { e.preventDefault(); moveBlock(drag.blockId, sid, null); setDrag(null); setDropOver(null); }
+                      const d = blockDragRef.current;
+                      if (!d) return;
+                      if (section.blockIds.length === 0) { e.preventDefault(); moveBlock(d.blockId, sid, null); blockDragRef.current = null; setDrag(null); setDropOver(null); }
                     }}
                   >
                     {section.blockIds.length === 0 && (
@@ -1827,10 +1882,11 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
                           onChange={(patch) => patchBlock(bid, patch)}
                           onClose={() => setEditingBlockId(null)}
                           onDelete={() => deleteBlock(bid)}
-                          onDragStart={() => setDrag({ blockId: bid, fromSection: sid })}
-                          onDragEnd={() => { setDrag(null); setDropOver(null); }}
+                          startTime={window.addMinutes(workshop.startTime || '09:00', blockOffsets[bid] || 0)}
+                          onDragStart={() => { const d = { blockId: bid, fromSection: sid }; blockDragRef.current = d; setDrag(d); }}
+                          onDragEnd={() => { blockDragRef.current = null; setDrag(null); setDropOver(null); }}
                           onDragOver={(e) => {
-                            if (!drag) return;
+                            if (!blockDragRef.current) return;
                             e.preventDefault();
                             e.dataTransfer.dropEffect = "move";
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -1841,10 +1897,11 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
                             setDropOver({ sectionId: sid, beforeBlockId });
                           }}
                           onDrop={(e) => {
-                            if (!drag) return;
+                            const d = blockDragRef.current;
+                            if (!d) return;
                             e.preventDefault();
-                            if (dropOver) moveBlock(drag.blockId, dropOver.sectionId, dropOver.beforeBlockId);
-                            setDrag(null); setDropOver(null);
+                            if (dropOver) moveBlock(d.blockId, dropOver.sectionId, dropOver.beforeBlockId);
+                            blockDragRef.current = null; setDrag(null); setDropOver(null);
                           }}
                         />
                       );
@@ -1854,7 +1911,7 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
                       <div
                         className={"blk-drop-tail" + (dropOver?.sectionId === sid && dropOver?.beforeBlockId === null ? " is-active" : "")}
                         onDragOver={(e) => { e.preventDefault(); setDropOver({ sectionId: sid, beforeBlockId: null }); }}
-                        onDrop={(e) => { e.preventDefault(); moveBlock(drag.blockId, sid, null); setDrag(null); setDropOver(null); }}
+                        onDrop={(e) => { const d = blockDragRef.current; if (!d) return; e.preventDefault(); moveBlock(d.blockId, sid, null); blockDragRef.current = null; setDrag(null); setDropOver(null); }}
                       />
                     )}
 
@@ -2263,7 +2320,7 @@ const App = () => {
   const newWorkshop = async (projectId) => {
     const sid = crypto.randomUUID(), wid = crypto.randomUUID();
     const sec = { id: sid, title: "Opening", blockIds: [] };
-    const ws  = { id: wid, projectId, title: "Untitled workshop", date: "2026-06-01", plannedDuration: 0, sectionIds: [sid] };
+    const ws  = { id: wid, projectId, title: "Untitled workshop", date: "2026-06-01", plannedDuration: 0, startTime: '09:00', sectionIds: [sid] };
     const pos = data.projects.find(p => p.id === projectId)?.workshopIds.length || 0;
     setData((d) => ({
       ...d,
@@ -2272,7 +2329,7 @@ const App = () => {
       projects:  d.projects.map((p) => p.id === projectId ? { ...p, workshopIds: [...p.workshopIds, wid] } : p)
     }));
     navigateTo({ name: "workshop", projectId, workshopId: wid });
-    const { error } = await window.db.from('workshops').insert({ id: wid, project_id: projectId, title: ws.title, date: ws.date, planned_duration: 0, position: pos });
+    const { error } = await window.db.from('workshops').insert({ id: wid, project_id: projectId, title: ws.title, date: ws.date, planned_duration: 0, start_time: '09:00', position: pos });
     if (!error) await window.db.from('sections').insert({ id: sid, workshop_id: wid, title: sec.title, position: 0 });
   };
 
