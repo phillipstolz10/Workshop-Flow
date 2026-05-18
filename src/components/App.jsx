@@ -168,6 +168,25 @@ export default function App() {
     return () => { db.removeChannel(channel); };
   }, [session?.user?.id]);
 
+  // Realtime: update project list when user is added to a project
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const channel = db
+      .channel(`members:${session.user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'project_members',
+        filter: `user_id=eq.${session.user.id}`,
+      }, async () => {
+        await acceptPendingInvitations(session.user.id).catch(() => {});
+        const fresh = await loadAllData().catch(() => null);
+        if (fresh) setData(fresh);
+      })
+      .subscribe();
+    return () => { db.removeChannel(channel); };
+  }, [session?.user?.id]);
+
   const markNotifRead = async (id) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
     await markNotificationRead(id).catch(() => {});

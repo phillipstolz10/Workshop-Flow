@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import Icon from './Icon.jsx';
 
 export default function Dashboard({ data, userId, onOpenProject, onNewProject, onDeleteProject }) {
   const projects = data.projects;
+  const [pendingDelete, setPendingDelete] = useState(null); // project object
+
   return (
     <div className="page">
       <div className="page-head">
@@ -32,7 +35,7 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
             {p.userId === userId && (
               <button
                 className="btn btn-icon dash-row-delete"
-                onClick={(e) => { e.stopPropagation(); onDeleteProject(p.id); }}
+                onClick={(e) => { e.stopPropagation(); setPendingDelete(p); }}
                 title="Delete project"
               >
                 <Icon name="trash" size={14} />
@@ -48,6 +51,28 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
           </div>
         </button>
       </div>
+
+      {pendingDelete && (
+        <div className="confirm-overlay" onClick={() => setPendingDelete(null)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-title">Delete "{pendingDelete.name}"?</div>
+            <p className="confirm-body">
+              This will permanently delete the project and all its workshops, sections, and blocks. This cannot be undone.
+            </p>
+            <div className="confirm-actions">
+              <button className="btn btn-ghost" onClick={() => setPendingDelete(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn confirm-delete-btn"
+                onClick={() => { onDeleteProject(pendingDelete.id); setPendingDelete(null); }}
+              >
+                <Icon name="trash" size={14} /> Delete project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

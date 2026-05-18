@@ -1790,7 +1790,7 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
         </div>
       </header>
 
-      <main className={"ws-agenda style-" + sectionStyle}>
+      <main className={"ws-agenda style-" + sectionStyle} onDragOver={(e) => { if (blockDragRef.current) e.preventDefault(); }}>
         {workshop.sectionIds.map((sid, idx) => {
           const section = data.sections[sid];
           const isCollapsed = !!collapsed[sid];
@@ -1814,7 +1814,7 @@ const Workshop = ({ data, workshopId, onUpdateData, onBack, onProject, tweaks, t
 
           return (
             <React.Fragment key={sid}>
-              {idx > 0 && !secDrag && InsertBar}
+              {idx > 0 && !secDrag && !drag && InsertBar}
               {secDrag && SecDropBar}
 
               <section
