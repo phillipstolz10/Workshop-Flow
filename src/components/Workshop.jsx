@@ -131,14 +131,16 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   // Close the editor automatically if the block was deleted by a remote user
   useEffect(() => {
     if (editingBlockId && !data.blocks[editingBlockId]) {
-      setEditingBlockId(null);
+      closeBlockEditor();
     }
-  }, [data.blocks, editingBlockId]);
+  }, [data.blocks, editingBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Track which block is open so other users see the activity indicator
-  useEffect(() => {
-    trackActiveBlock(editingBlockId || null);
-  }, [editingBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Wrappers so trackActiveBlock is called synchronously in the same event as
+  // setEditingBlockId — avoiding a race where an onBlur pushPresence fires
+  // after the useEffect-based trackActiveBlock(null) and re-instates the old
+  // active_block in Supabase presence.
+  const openBlockEditor  = useCallback((bid) => { setEditingBlockId(bid);  trackActiveBlock(bid);  }, [trackActiveBlock]);
+  const closeBlockEditor = useCallback(()    => { setEditingBlockId(null); trackActiveBlock(null); }, [trackActiveBlock]);
 
   // ── Remote update handlers (no pushHistory — don't pollute local undo stack) ──
 
@@ -276,7 +278,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
       });
       return { ...d, blocks: newBlocks, sections: newSections };
     });
-    setEditingBlockId(null);
+    closeBlockEditor();
     toast('Block deleted');
     await Promise.all([
       db.from('blocks').delete().eq('id', id),
@@ -294,7 +296,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
       blocks:   { ...d.blocks,   [id]: block },
       sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], blockIds: [...d.sections[sectionId].blockIds, id] } },
     }));
-    setEditingBlockId(id);
+    openBlockEditor(id);
     await Promise.all([
       db.from('blocks').insert({ id, section_id: sectionId, title: block.title, duration: block.duration, position: pos }),
       broadcast('block_add', { block, sectionId }),
@@ -423,7 +425,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   };
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') setEditingBlockId(null); };
+    const onKey = (e) => { if (e.key === 'Escape') closeBlockEditor(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
@@ -609,9 +611,9 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                             isDragging={drag?.blockId === bid}
                             isDropTarget={isDropTarget}
                             activeEditor={blockEditors[bid]}
-                            onOpen={() => setEditingBlockId(bid)}
+                            onOpen={() => openBlockEditor(bid)}
                             onChange={(patch) => patchBlock(bid, patch)}
-                            onClose={() => setEditingBlockId(null)}
+                            onClose={() => closeBlockEditor()}
                             onDelete={() => deleteBlock(bid)}
                             startTime={addMinutes(workshop.startTime || '09:00', blockOffsets[bid] || 0)}
                             onDragStart={() => { const d = { blockId: bid, fromSection: sid }; blockDragRef.current = d; setDrag(d); }}
@@ -674,7 +676,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             mode="panel"
             block={editingBlock}
             onChange={(b) => patchBlock(editingBlockId, b)}
-            onClose={() => setEditingBlockId(null)}
+            onClose={() => closeBlockEditor()}
             onDelete={() => deleteBlock(editingBlockId)}
           />
         )}

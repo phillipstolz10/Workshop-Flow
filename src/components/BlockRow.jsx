@@ -90,6 +90,15 @@ export default function BlockRow({
                     <Icon name="user" size={11} /> {block.person}
                   </span>
                 )}
+                {activeEditor && (
+                  <div
+                    className="blk-editor-avatar"
+                    style={{ background: activeEditor.color }}
+                    title={activeEditor.full_name || 'Someone'}
+                  >
+                    {initials(activeEditor.full_name)}
+                  </div>
+                )}
               </div>
               {block.description && <div className="blk-desc">{block.description}</div>}
               {block.material && <div className="blk-material"><Icon name="copy" size={11} /> {block.material}</div>}
@@ -98,15 +107,6 @@ export default function BlockRow({
         </div>
 
         <div className="blk-actions">
-          {activeEditor && (
-            <div
-              className="blk-editor-avatar"
-              style={{ background: activeEditor.color }}
-              title={activeEditor.full_name || 'Someone'}
-            >
-              {initials(activeEditor.full_name)}
-            </div>
-          )}
           <button
             className="btn btn-icon blk-delete"
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
