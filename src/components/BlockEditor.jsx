@@ -171,7 +171,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
         <div style={{ flex: 1 }} />
         <button
           className="btn btn-primary"
-          onClick={() => { onChange({ ...block, description: desc, person, material }); onClose(); }}
+          onClick={onClose}
         >
           <Icon name="check" size={14} /> Done
         </button>
@@ -183,7 +183,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
     const titleLock = getLock('title');
     return (
       <>
-        <div className="be-panel-scrim" onClick={() => { onChange({ ...block, description: desc, person, material }); onClose(); }} />
+        <div className="be-panel-scrim" onClick={onClose} />
         <aside className="be-panel" role="dialog" aria-label="Edit block">
           <div className="be-panel-head">
             <div>
@@ -216,7 +216,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
               >{block.title || 'Untitled block'}</div>
             </div>
-            <button className="btn btn-icon" onClick={() => { onChange({ ...block, description: desc, person, material }); onClose(); }}>
+            <button className="btn btn-icon" onClick={onClose}>
               <Icon name="x" size={16} />
             </button>
           </div>
