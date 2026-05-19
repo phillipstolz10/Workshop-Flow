@@ -63,28 +63,38 @@ export function useWorkshopRealtime({
   // ── Presence helpers ──────────────────────────────────────────────────────
 
   const rebuildFromPresence = useCallback((state) => {
+    // Phoenix Channels can keep multiple presence entries for the same user_id
+    // (e.g. a stale socket from a previous session alongside the current one).
+    // Deduplicate by user_id, keeping only the entry with the highest ts so
+    // stale active_block / lock values from dead connections don't bleed through.
+    const byUser = {};
+    Object.values(state).flat().forEach((p) => {
+      const prev = byUser[p.user_id];
+      if (!prev || (p.ts || 0) > (prev.ts || 0)) byUser[p.user_id] = p;
+    });
+    const entries = Object.values(byUser);
+
     const users    = [];
     const newLocks = {};
-    Object.values(state).flat().forEach((p) => {
-      // Only add each user once (presence key is userId, so duplicates are rare)
-      if (!users.find((u) => u.user_id === p.user_id)) {
-        users.push({ user_id: p.user_id, full_name: p.full_name, color: p.color });
-      }
-      // Exclude own locks — we already know our own editing state
-      if (p.user_id !== userInfoRef.current.userId && Array.isArray(p.locks)) {
-        p.locks.forEach((key) => {
-          newLocks[key] = { user_id: p.user_id, full_name: p.full_name, color: p.color };
-        });
+    const newBlockEditors = {};
+    entries.forEach((p) => {
+      users.push({ user_id: p.user_id, full_name: p.full_name, color: p.color });
+      if (p.user_id !== userInfoRef.current.userId) {
+        // Field locks
+        if (Array.isArray(p.locks)) {
+          p.locks.forEach((key) => {
+            newLocks[key] = { user_id: p.user_id, full_name: p.full_name, color: p.color };
+          });
+        }
+        // Active block editor
+        if (p.active_block) {
+          newBlockEditors[p.active_block] = { user_id: p.user_id, full_name: p.full_name, color: p.color };
+        }
       }
     });
+
     setPresence(users);
     setLocks(newLocks);
-    const newBlockEditors = {};
-    Object.values(state).flat().forEach((p) => {
-      if (p.user_id !== userInfoRef.current.userId && p.active_block) {
-        newBlockEditors[p.active_block] = { user_id: p.user_id, full_name: p.full_name, color: p.color };
-      }
-    });
     setBlockEditors(newBlockEditors);
   }, []);
 
@@ -93,12 +103,13 @@ export function useWorkshopRealtime({
     if (!ch) return;
     const { userId: uid, fullName: fn, color: c } = userInfoRef.current;
     await ch.track({
-      user_id:  uid,
-      full_name: fn  || 'Anonymous',
-      color:    c   || '#3b82f6',
-      locks:    [...myLocksRef.current],
+      user_id:      uid,
+      full_name:    fn  || 'Anonymous',
+      color:        c   || '#3b82f6',
+      locks:        [...myLocksRef.current],
       active_block: myActiveBlockRef.current,
-    });
+      ts:           Date.now(), // used to pick the newest entry when the same user
+    });                         // has multiple sockets (stale tab + current tab)
   }, []);
 
   // ── Channel setup ─────────────────────────────────────────────────────────
