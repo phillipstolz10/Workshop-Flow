@@ -34,13 +34,31 @@ const Spinner = () => (
   </div>
 );
 
+// ── URL ↔ view helpers ────────────────────────────────────────────────────────
+function viewToPath(v) {
+  if (v.name === 'workshop') return `/projects/${v.projectId}/workshops/${v.workshopId}`;
+  if (v.name === 'project')  return `/projects/${v.projectId}`;
+  if (v.name === 'profile')  return '/profile';
+  return '/';
+}
+
+function pathToView(path) {
+  const ws = path.match(/^\/projects\/([^/?#]+)\/workshops\/([^/?#]+)/);
+  if (ws) return { name: 'workshop', projectId: ws[1], workshopId: ws[2] };
+  const pr = path.match(/^\/projects\/([^/?#]+)/);
+  if (pr) return { name: 'project', projectId: pr[1] };
+  if (path.startsWith('/profile')) return { name: 'profile' };
+  return { name: 'dashboard' };
+}
+
 export default function App() {
   const [session,     setSession]     = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(false);
   const [dbError, setDbError] = useState(null);
-  const [view,    setView]    = useState({ name: 'dashboard' });
+  // Initialise from the current URL so reloads land on the right screen.
+  const [view,    setView]    = useState(() => pathToView(window.location.pathname));
   const [toastMsg, setToastMsg] = useState(null);
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
@@ -114,6 +132,7 @@ export default function App() {
         setNotifications([]);
         setShowNotifications(false);
         setView({ name: 'dashboard' });
+        window.history.replaceState({ name: 'dashboard' }, '', '/');
         undoStack.current = [];
         redoStack.current = [];
       }
@@ -221,8 +240,10 @@ export default function App() {
   };
 
   useEffect(() => {
-    window.history.replaceState({ name: 'dashboard' }, '');
-    const onPop = (e) => setView(e.state || { name: 'dashboard' });
+    // Stamp history state for the current URL so back/forward always has state.
+    const initial = pathToView(window.location.pathname);
+    window.history.replaceState(initial, '', window.location.pathname);
+    const onPop = (e) => setView(e.state || pathToView(window.location.pathname));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -231,7 +252,7 @@ export default function App() {
 
   const updateData = (mut) => setData((d) => typeof mut === 'function' ? mut(d) : mut);
 
-  const navigateTo = (newView) => { setView(newView); window.history.pushState(newView, ''); };
+  const navigateTo = (newView) => { setView(newView); window.history.pushState(newView, '', viewToPath(newView)); };
   const goDashboard = () => navigateTo({ name: 'dashboard' });
   const goProject   = (projectId) => navigateTo({ name: 'project', projectId });
   const goWorkshop  = (workshopId) => {
