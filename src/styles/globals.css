@@ -310,7 +310,7 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
 .blk-start-time { font-size: 10px; color: var(--text-subtle); font-family: var(--font-mono); line-height: 1.2; text-align: right; margin-top: 1px; }
 
 .ws-header-total {
-  text-align: right; padding: 14px 18px; border-left: 1px solid var(--border);
+  text-align: right; padding: 0 18px 14px; border-left: 1px solid var(--border);
   padding-left: 28px; min-width: 200px; white-space: nowrap;
 }
 .ws-header-total .eyebrow { white-space: nowrap; }
@@ -318,7 +318,7 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
   font-size: 64px; line-height: 1; letter-spacing: -0.025em; font-weight: 400;
   font-family: var(--font-serif); color: var(--text);
   display: inline-flex; align-items: baseline; gap: 6px;
-  font-feature-settings: "tnum"; white-space: nowrap;
+  font-feature-settings: "tnum"; white-space: nowrap; margin-top: 14px;
 }
 .ws-total-unit { font-size: 18px; color: var(--text-muted); font-family: var(--font-sans); font-weight: 500; white-space: nowrap; }
 .ws-total-sub {
