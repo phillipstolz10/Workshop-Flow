@@ -38,8 +38,10 @@ export function useWorkshopRealtime({
 }) {
   const [presence, setPresence] = useState([]);
   const [locks,    setLocks]    = useState({});
+  const [blockEditors, setBlockEditors] = useState({});
 
   const myLocksRef   = useRef(new Set());
+  const myActiveBlockRef = useRef(null);
   const channelRef   = useRef(null);
   const userInfoRef  = useRef({ userId, fullName, color });
   useEffect(() => { userInfoRef.current = { userId, fullName, color }; }, [userId, fullName, color]);
@@ -77,6 +79,13 @@ export function useWorkshopRealtime({
     });
     setPresence(users);
     setLocks(newLocks);
+    const newBlockEditors = {};
+    Object.values(state).flat().forEach((p) => {
+      if (p.user_id !== userInfoRef.current.userId && p.active_block) {
+        newBlockEditors[p.active_block] = { user_id: p.user_id, full_name: p.full_name, color: p.color };
+      }
+    });
+    setBlockEditors(newBlockEditors);
   }, []);
 
   const pushPresence = useCallback(async () => {
@@ -88,6 +97,7 @@ export function useWorkshopRealtime({
       full_name: fn  || 'Anonymous',
       color:    c   || '#3b82f6',
       locks:    [...myLocksRef.current],
+      active_block: myActiveBlockRef.current,
     });
   }, []);
 
@@ -171,5 +181,11 @@ export function useWorkshopRealtime({
     await pushPresence();
   }, [pushPresence]);
 
-  return { presence, locks, broadcast, trackField, untrackField };
+  /** Call when a block editor opens/closes — tracks which block this user is editing. */
+  const trackActiveBlock = useCallback(async (blockId) => {
+    myActiveBlockRef.current = blockId || null;
+    await pushPresence();
+  }, [pushPresence]);
+
+  return { presence, locks, blockEditors, broadcast, trackField, untrackField, trackActiveBlock };
 }

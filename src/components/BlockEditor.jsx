@@ -1,7 +1,21 @@
 import { useState, useEffect, useContext } from 'react';
 import Icon from './Icon.jsx';
-import { snap5 } from '../lib/utils.js';
+import { snap5, initials, firstName } from '../lib/utils.js';
 import { WorkshopRealtimeContext } from '../contexts/WorkshopRealtimeContext.jsx';
+
+function LockChip({ lock }) {
+  if (!lock) return null;
+  return (
+    <span className="lock-chip">
+      <span className="lock-chip-avatar" style={{ background: lock.color }}>
+        {initials(lock.full_name)}
+      </span>
+      <span className="lock-chip-name" style={{ color: lock.color }}>
+        {firstName(lock.full_name)}
+      </span>
+    </span>
+  );
+}
 
 export default function BlockEditor({ block, onChange, onClose, onDelete, mode = 'inline' }) {
   if (!block) return null;
@@ -39,7 +53,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
   const body = (
     <div className="be-grid">
       <div className="be-field be-field-duration">
-        <label className="field-label">Duration in min</label>
+        <label className="field-label">Duration in min<LockChip lock={getLock('duration')} /></label>
         <div className="be-duration-stepper">
           <button
             className="be-step"
@@ -85,7 +99,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
       </div>
 
       <div className="be-field be-field-desc">
-        <label className="field-label">Description</label>
+        <label className="field-label">Description<LockChip lock={getLock('description')} /></label>
         <textarea
           className="textarea"
           value={desc}
@@ -99,7 +113,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
       </div>
 
       <div className="be-field be-field-person">
-        <label className="field-label">Person</label>
+        <label className="field-label">Person<LockChip lock={getLock('person')} /></label>
         <input
           className="input"
           value={person}
@@ -113,7 +127,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
       </div>
 
       <div className="be-field be-field-material">
-        <label className="field-label">Materials</label>
+        <label className="field-label">Materials<LockChip lock={getLock('material')} /></label>
         <input
           className="input"
           value={material}

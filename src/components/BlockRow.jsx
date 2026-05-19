@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import Icon from './Icon.jsx';
 import BlockEditor from './BlockEditor.jsx';
-import { snap5 } from '../lib/utils.js';
+import { snap5, initials } from '../lib/utils.js';
 
 export default function BlockRow({
-  block, isEditing, isDragging, isDropTarget,
+  block, isEditing, isDragging, isDropTarget, activeEditor,
   onOpen, onChange, onClose, onDelete,
   onDragStart, onDragEnd, onDragOver, onDrop,
   startTime,
@@ -37,6 +37,10 @@ export default function BlockRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
+      <div
+        className="blk-activity-strip"
+        style={{ opacity: activeEditor ? 1 : 0, background: activeEditor?.color || 'transparent' }}
+      />
       <div className="blk-row" onClick={() => { if (!isEditing && !durOpen) onOpen(); }}>
         <div
           className="blk-grip"
@@ -94,6 +98,15 @@ export default function BlockRow({
         </div>
 
         <div className="blk-actions">
+          {activeEditor && (
+            <div
+              className="blk-editor-avatar"
+              style={{ background: activeEditor.color }}
+              title={activeEditor.full_name || 'Someone'}
+            >
+              {initials(activeEditor.full_name)}
+            </div>
+          )}
           <button
             className="btn btn-icon blk-delete"
             onClick={(e) => { e.stopPropagation(); onDelete(); }}

@@ -11,9 +11,11 @@ import { createContext } from 'react';
  * userId    – current user's id (so BlockEditor can skip self-locks)
  */
 export const WorkshopRealtimeContext = createContext({
-  presence:     [],
-  locks:        {},
-  trackField:   async () => {},
-  untrackField: async () => {},
-  userId:       null,
+  presence:         [],
+  locks:            {},
+  blockEditors:     {},
+  trackField:       async () => {},
+  untrackField:     async () => {},
+  trackActiveBlock: async () => {},
+  userId:           null,
 });

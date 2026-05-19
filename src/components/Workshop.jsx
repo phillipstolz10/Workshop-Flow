@@ -8,7 +8,7 @@ import { WorkshopRealtimeContext } from '../contexts/WorkshopRealtimeContext.jsx
 import { useWorkshopRealtime } from '../hooks/useWorkshopRealtime.js';
 import { db } from '../lib/supabase.js';
 import { syncSectionPositions, syncBlockPositions } from '../lib/db.js';
-import { workshopTotal, fmtDuration, addMinutes, snap5 } from '../lib/utils.js';
+import { workshopTotal, fmtDuration, addMinutes, snap5, initials } from '../lib/utils.js';
 
 function ContentEditable({ value, onChange, className }) {
   const ref = useRef(null);
@@ -66,6 +66,34 @@ function UndoRedoBtns() {
   );
 }
 
+function PresenceAvatars({ presence, userId }) {
+  const others = presence.filter((p) => p.user_id !== userId);
+  if (others.length === 0) return null;
+  const shown = others.slice(0, 3);
+  const extra = others.length - shown.length;
+  return (
+    <div className="presence-stack">
+      <div className="presence-avatars">
+        {shown.map((p) => (
+          <div
+            key={p.user_id}
+            className="presence-avatar"
+            style={{ background: p.color || '#3b82f6' }}
+            title={p.full_name || 'Anonymous'}
+          >
+            {initials(p.full_name)}
+          </div>
+        ))}
+        {extra > 0 && (
+          <div className="presence-avatar presence-avatar-overflow">+{extra}</div>
+        )}
+      </div>
+      <span className="presence-online-dot" />
+      <span className="presence-label">{others.length} here</span>
+    </div>
+  );
+}
+
 export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory, userId, userColor, userFullName }) {
   // Look up workshop/project — may be briefly undefined during Strict Mode
   // double-mount or a concurrent data reload. Guard after hooks (Rules of Hooks).
@@ -106,6 +134,11 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
       setEditingBlockId(null);
     }
   }, [data.blocks, editingBlockId]);
+
+  // Track which block is open so other users see the activity indicator
+  useEffect(() => {
+    trackActiveBlock(editingBlockId || null);
+  }, [editingBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Remote update handlers (no pushHistory — don't pollute local undo stack) ──
 
@@ -197,7 +230,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
 
   // ── Realtime hook ─────────────────────────────────────────────────────────
 
-  const { presence, locks, broadcast, trackField, untrackField } = useWorkshopRealtime({
+  const { presence, locks, blockEditors, broadcast, trackField, untrackField, trackActiveBlock } = useWorkshopRealtime({
     workshopId,
     userId,
     fullName: userFullName,
@@ -397,7 +430,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
 
   // ── Context value for children (BlockEditor etc.) ─────────────────────────
 
-  const realtimeCtx = { presence, locks, trackField, untrackField, userId };
+  const realtimeCtx = { presence, locks, blockEditors, trackField, untrackField, trackActiveBlock, userId };
 
   // ── Guard — must come after all hooks ────────────────────────────────────
   if (!workshop || !project) return null;
@@ -469,6 +502,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
               <UndoRedoBtns />
             </div>
             <div style={{ flex: 1 }} />
+            <PresenceAvatars presence={presence} userId={userId} />
             <div className="ws-toolbar-group">
               <button
                 className={'btn btn-ghost ws-tool' + (showPackingList ? ' is-active' : '')}
@@ -574,6 +608,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                             isEditing={isEditing}
                             isDragging={drag?.blockId === bid}
                             isDropTarget={isDropTarget}
+                            activeEditor={blockEditors[bid]}
                             onOpen={() => setEditingBlockId(bid)}
                             onChange={(patch) => patchBlock(bid, patch)}
                             onClose={() => setEditingBlockId(null)}
