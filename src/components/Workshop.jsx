@@ -135,13 +135,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     }
   }, [data.blocks, editingBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Wrappers so trackActiveBlock is called synchronously in the same event as
-  // setEditingBlockId — avoiding a race where an onBlur pushPresence fires
-  // after the useEffect-based trackActiveBlock(null) and re-instates the old
-  // active_block in Supabase presence.
-  const openBlockEditor  = useCallback((bid) => { setEditingBlockId(bid);  trackActiveBlock(bid);  }, [trackActiveBlock]);
-  const closeBlockEditor = useCallback(()    => { setEditingBlockId(null); trackActiveBlock(null); }, [trackActiveBlock]);
-
   // ── Remote update handlers (no pushHistory — don't pollute local undo stack) ──
 
   const handleRemoteBlockPatch = useCallback((blockId, patch) => {
@@ -246,6 +239,13 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     onRemoteBlockReorder:   handleRemoteBlockReorder,
     onRemoteSectionReorder: handleRemoteSectionReorder,
   });
+
+  // Wrappers so trackActiveBlock is called synchronously in the same event as
+  // setEditingBlockId — avoiding a race where an onBlur pushPresence fires
+  // after the useEffect-based trackActiveBlock(null) and re-instates the old
+  // active_block in Supabase presence.
+  const openBlockEditor  = useCallback((bid) => { setEditingBlockId(bid);  trackActiveBlock(bid);  }, [trackActiveBlock]);
+  const closeBlockEditor = useCallback(()    => { setEditingBlockId(null); trackActiveBlock(null); }, [trackActiveBlock]);
 
   // ── Local mutations (each also broadcasts to other users) ─────────────────
 
