@@ -272,7 +272,7 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
 .ws-header { border-bottom: 1px solid var(--border); background: var(--surface); }
 .ws-header-inner {
   max-width: 1240px; margin: 0 auto; padding: 32px 28px 24px;
-  display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: flex-end;
+  display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: flex-start;
 }
 .ws-header-meta { min-width: 0; }
 .ws-title {
@@ -321,8 +321,8 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
 }
 .ws-total-unit { font-size: 18px; color: var(--text-muted); font-family: var(--font-sans); font-weight: 500; white-space: nowrap; }
 .ws-total-sub {
-  display: inline-flex; align-items: center; cursor: pointer;
-  padding: 4px 8px; border-radius: 6px; margin-top: 4px;
+  display: flex; justify-content: flex-end; margin-top: 4px; cursor: pointer;
+  padding: 4px 8px; border-radius: 6px;
   font-family: var(--font-mono); font-size: 13px; color: var(--text); white-space: nowrap;
 }
 .ws-total-sub:hover { background: var(--surface-2); }
