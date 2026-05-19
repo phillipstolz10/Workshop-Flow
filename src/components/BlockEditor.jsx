@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useRef, useContext } from 'react';
 import Icon from './Icon.jsx';
 import { snap5, initials, firstName } from '../lib/utils.js';
 import { WorkshopRealtimeContext } from '../contexts/WorkshopRealtimeContext.jsx';
@@ -28,13 +28,37 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
   const [durRaw,   setDurRaw]   = useState(String(block.duration));
   const [durEmpty, setDurEmpty] = useState(false);
 
+  // Track which fields the local user is currently typing in so we don't
+  // clobber their in-progress input with remote updates.
+  const focusedFields = useRef(new Set());
+
+  // Full reset when switching to a different block.
   useEffect(() => {
+    focusedFields.current.clear();
     setDesc(block.description || '');
     setPerson(block.person     || '');
     setMaterial(block.material || '');
     setDurRaw(String(block.duration));
     setDurEmpty(false);
   }, [block.id]);
+
+  // Sync each field from remote patches — but only when the local user
+  // isn't actively editing that field, so we don't jump their cursor.
+  useEffect(() => {
+    if (!focusedFields.current.has('description')) setDesc(block.description || '');
+  }, [block.description]);                                          // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!focusedFields.current.has('person')) setPerson(block.person || '');
+  }, [block.person]);                                               // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!focusedFields.current.has('material')) setMaterial(block.material || '');
+  }, [block.material]);                                             // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!focusedFields.current.has('duration')) { setDurRaw(String(block.duration)); setDurEmpty(false); }
+  }, [block.duration]);                                             // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = (patch) => onChange({ ...block, ...patch });
 
@@ -71,9 +95,9 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
             value={durRaw}
             disabled={!!getLock('duration')}
             title={lockTitle('duration')}
-            onFocus={() => trackField(block.id, 'duration')}
+            onFocus={() => { focusedFields.current.add('duration'); trackField(block.id, 'duration'); }}
             onBlur={(e) => {
-              untrackField(block.id, 'duration');
+              focusedFields.current.delete('duration'); untrackField(block.id, 'duration');
               if (e.target.value === '') { setDurEmpty(true); }
               else {
                 const snapped = snap5(parseInt(e.target.value, 10));
@@ -105,8 +129,8 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
           value={desc}
           disabled={!!getLock('description')}
           title={lockTitle('description')}
-          onFocus={() => trackField(block.id, 'description')}
-          onBlur={() => { untrackField(block.id, 'description'); onChange({ ...block, description: desc, person, material }); }}
+          onFocus={() => { focusedFields.current.add('description'); trackField(block.id, 'description'); }}
+          onBlur={() => { focusedFields.current.delete('description'); untrackField(block.id, 'description'); onChange({ ...block, description: desc, person, material }); }}
           onChange={(e) => setDesc(e.target.value)}
           placeholder="What's the activity? Instructions for your future self."
         />
@@ -119,8 +143,8 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
           value={person}
           disabled={!!getLock('person')}
           title={lockTitle('person')}
-          onFocus={() => trackField(block.id, 'person')}
-          onBlur={() => { untrackField(block.id, 'person'); onChange({ ...block, description: desc, person, material }); }}
+          onFocus={() => { focusedFields.current.add('person'); trackField(block.id, 'person'); }}
+          onBlur={() => { focusedFields.current.delete('person'); untrackField(block.id, 'person'); onChange({ ...block, description: desc, person, material }); }}
           onChange={(e) => setPerson(e.target.value)}
           placeholder="Who leads this?"
         />
@@ -133,8 +157,8 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
           value={material}
           disabled={!!getLock('material')}
           title={lockTitle('material')}
-          onFocus={() => trackField(block.id, 'material')}
-          onBlur={() => { untrackField(block.id, 'material'); onChange({ ...block, description: desc, person, material }); }}
+          onFocus={() => { focusedFields.current.add('material'); trackField(block.id, 'material'); }}
+          onBlur={() => { focusedFields.current.delete('material'); untrackField(block.id, 'material'); onChange({ ...block, description: desc, person, material }); }}
           onChange={(e) => setMaterial(e.target.value)}
           placeholder="Post-its, projector, etc."
         />
