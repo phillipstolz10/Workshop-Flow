@@ -101,6 +101,10 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
   border-color: var(--text);
   box-shadow: 0 0 0 3px rgba(12,10,9,0.08);
 }
+.input:disabled, .textarea:disabled {
+  background: #f3f4f6; color: #9ca3af; cursor: not-allowed;
+  border-color: var(--border); box-shadow: none;
+}
 .textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
 
 .field-label {
@@ -629,6 +633,8 @@ body[data-density="compact"] .blk-desc { display: none; }
   cursor: pointer; font-family: var(--font-mono); font-size: 18px; color: var(--text); line-height: 1;
 }
 .be-step:hover { background: var(--surface-2); }
+.be-step:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; border-color: var(--border); }
+.be-step:disabled:hover { background: #f3f4f6; }
 .be-duration-input { text-align: center; padding-right: 11px; -moz-appearance: textfield; }
 .be-duration-input.is-warn { outline: 2px solid var(--accent) !important; border-color: transparent; }
 .be-duration-input::-webkit-inner-spin-button,
