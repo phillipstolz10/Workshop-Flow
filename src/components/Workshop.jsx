@@ -247,6 +247,26 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const openBlockEditor  = useCallback((bid) => { setEditingBlockId(bid);  trackActiveBlock(bid);  }, [trackActiveBlock]);
   const closeBlockEditor = useCallback(()    => { setEditingBlockId(null); trackActiveBlock(null); }, [trackActiveBlock]);
 
+  // ── Broadcast undo/redo diffs to peers ────────────────────────────────────
+  // App.jsx calls afterUndoRedoRef.current(fromState, toState) after every
+  // undo/redo. We diff the block map and broadcast a block_patch for each
+  // changed block so collaborators see the revert without a full page reload.
+  const { afterUndoRedoRef } = useContext(HistoryContext);
+  useEffect(() => {
+    afterUndoRedoRef.current = (fromState, toState) => {
+      const FIELDS = ['title', 'description', 'person', 'material', 'duration'];
+      Object.keys(toState.blocks).forEach((blockId) => {
+        const from = fromState.blocks[blockId];
+        const to   = toState.blocks[blockId];
+        if (!from || !to) return;
+        const patch = {};
+        FIELDS.forEach((f) => { if (from[f] !== to[f]) patch[f] = to[f]; });
+        if (Object.keys(patch).length) broadcast('block_patch', { blockId, patch });
+      });
+    };
+    return () => { afterUndoRedoRef.current = null; };
+  }, [broadcast, afterUndoRedoRef]);
+
   // ── Local mutations (each also broadcasts to other users) ─────────────────
 
   const patchBlock = async (id, patch) => {

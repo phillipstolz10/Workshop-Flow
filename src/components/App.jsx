@@ -48,6 +48,8 @@ export default function App() {
   const redoStack = useRef([]);
   const [, forceTick] = useState(0);
   const bump = () => forceTick((t) => t + 1);
+  // Workshop registers a diff-broadcaster here so undo/redo propagates to peers.
+  const afterUndoRedoRef = useRef(null);
 
   const [profile,      setProfile]      = useState(null);
   const [profileReady, setProfileReady] = useState(false);
@@ -139,6 +141,7 @@ export default function App() {
     redoStack.current.push(curr);
     setData(prev); bump(); showToast('Undone');
     applyStateDiff(curr, prev).catch(() => showToast('Sync error after undo'));
+    afterUndoRedoRef.current?.(curr, prev);
   }, [data]);
 
   const redo = useCallback(() => {
@@ -148,6 +151,7 @@ export default function App() {
     undoStack.current.push(curr);
     setData(next); bump(); showToast('Redone');
     applyStateDiff(curr, next).catch(() => showToast('Sync error after redo'));
+    afterUndoRedoRef.current?.(curr, next);
   }, [data]);
 
   useEffect(() => {
@@ -303,7 +307,7 @@ export default function App() {
     await db.from('workshops').delete().eq('id', workshopId);
   };
 
-  const hist = { canUndo: undoStack.current.length > 0, canRedo: redoStack.current.length > 0, undo, redo };
+  const hist = { canUndo: undoStack.current.length > 0, canRedo: redoStack.current.length > 0, undo, redo, afterUndoRedoRef };
 
   if (!authChecked) return <Spinner />;
   if (!session) return <AuthScreen />;
