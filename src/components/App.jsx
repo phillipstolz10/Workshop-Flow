@@ -9,7 +9,7 @@ import TemplateEditor from './TemplateEditor.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { useTweaks } from '../hooks/useTweaks.js';
 import { db } from '../lib/supabase.js';
-import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, setPresenceColor, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead, getTemplates, deleteTemplate, getTemplate, updateTemplate } from '../lib/db.js';
+import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, setPresenceColor, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead, getTemplates, saveTemplate, deleteTemplate, getTemplate, updateTemplate } from '../lib/db.js';
 import NamePromptModal from './NamePromptModal.jsx';
 import NotificationPanel from './NotificationPanel.jsx';
 
@@ -307,6 +307,14 @@ export default function App() {
     }
     navigateTo({ name: 'template', templateId });
   };
+  const newTemplate = async () => {
+    try {
+      const t = await saveTemplate('Untitled template', '', { sections: [] });
+      setTemplates((prev) => [t, ...prev]);
+      setActiveTemplate(t);
+      navigateTo({ name: 'template', templateId: t.id });
+    } catch { toast('Failed to create template'); }
+  };
   const goWorkshop  = (workshopId) => {
     const w = data.workshops[workshopId];
     navigateTo({ name: 'workshop', projectId: w.projectId, workshopId });
@@ -432,7 +440,7 @@ export default function App() {
         </nav>
 
         {view.name === 'dashboard' &&
-          <Dashboard data={data} userId={session.user.id} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} templates={templates} onDeleteTemplate={handleDeleteTemplate} onOpenTemplate={goTemplate} />
+          <Dashboard data={data} userId={session.user.id} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} templates={templates} onDeleteTemplate={handleDeleteTemplate} onOpenTemplate={goTemplate} onNewTemplate={newTemplate} />
         }
         {view.name === 'project' &&
           <ProjectView

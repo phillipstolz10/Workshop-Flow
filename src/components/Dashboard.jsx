@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 
-export default function Dashboard({ data, userId, onOpenProject, onNewProject, onDeleteProject, templates, onDeleteTemplate, onOpenTemplate }) {
+export default function Dashboard({ data, userId, onOpenProject, onNewProject, onDeleteProject, templates, onDeleteTemplate, onOpenTemplate, onNewTemplate }) {
   const projects = data.projects;
   const [pendingDelete, setPendingDelete] = useState(null); // project object
   const [pendingDeleteTemplate, setPendingDeleteTemplate] = useState(null);
@@ -50,6 +50,9 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
         <div>
           <h2 className="dash-section-heading">Your Templates</h2>
         </div>
+        <button className="btn btn-accent" onClick={onNewTemplate}>
+          <Icon name="plus" size={14} /> New template
+        </button>
       </div>
       {templates && templates.length > 0 ? (
         <div className="dash-list" style={{ marginTop: 16 }}>
