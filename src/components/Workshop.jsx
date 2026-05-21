@@ -52,17 +52,19 @@ function TickerNumber({ value, isOver }) {
   );
 }
 
-function UndoRedoBtns() {
+function FloatingUndoRedo() {
   const h = useContext(HistoryContext);
   return (
-    <>
-      <button className="btn btn-ghost ws-tool" onClick={h.undo} disabled={!h.canUndo} title="Undo (⌘Z)">
-        <Icon name="undo" size={14} /><span>Undo</span><span className="kbd">⌘Z</span>
+    <div className="float-ur-panel">
+      <button className="float-ur-btn" onClick={h.undo} disabled={!h.canUndo} aria-label="Undo">
+        <Icon name="undo" size={16} />
+        <span className="float-ur-tip">Undo</span>
       </button>
-      <button className="btn btn-ghost ws-tool" onClick={h.redo} disabled={!h.canRedo} title="Redo (⌘⇧Z)">
-        <Icon name="redo" size={14} /><span>Redo</span>
+      <button className="float-ur-btn" onClick={h.redo} disabled={!h.canRedo} aria-label="Redo">
+        <Icon name="redo" size={16} />
+        <span className="float-ur-tip">Redo</span>
       </button>
-    </>
+    </div>
   );
 }
 
@@ -520,9 +522,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           </div>
 
           <div className="ws-toolbar">
-            <div className="ws-toolbar-group">
-              <UndoRedoBtns />
-            </div>
             <div style={{ flex: 1 }} />
             <PresenceAvatars presence={presence} userId={userId} />
             <div className="ws-toolbar-group">
@@ -708,6 +707,8 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             onClose={() => setShowPackingList(false)}
           />
         )}
+
+        <FloatingUndoRedo />
       </div>
     </WorkshopRealtimeContext.Provider>
   );
