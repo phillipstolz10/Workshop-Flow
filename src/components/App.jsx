@@ -248,6 +248,15 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  // Clear undo/redo stacks every time a workshop is opened so the previous
+  // session's history never leaks into a new one.
+  useEffect(() => {
+    if (!view.workshopId) return;
+    undoStack.current = [];
+    redoStack.current = [];
+    bump();
+  }, [view.workshopId]);
+
   useEffect(() => { document.body.setAttribute('data-density', tweaks.density); }, [tweaks.density]);
 
   const updateData = (mut) => setData((d) => typeof mut === 'function' ? mut(d) : mut);
