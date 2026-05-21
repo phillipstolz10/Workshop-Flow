@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useContext, useCallback, Fragment } from 'react';
 import Icon from './Icon.jsx';
+import SaveTemplateModal from './SaveTemplateModal.jsx';
 import BlockRow from './BlockRow.jsx';
 import BlockEditor from './BlockEditor.jsx';
 import PackingList from './PackingList.jsx';
@@ -53,19 +54,69 @@ function TickerNumber({ value, isOver }) {
   );
 }
 
-function FloatingUndoRedo() {
+function FloatingUndoRedo({ data, workshopId, toast }) {
   const h = useContext(HistoryContext);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templates, setTemplates] = useState([]);
+
+  const buildContent = () => {
+    const workshop = data.workshops[workshopId];
+    if (!workshop) return { sections: [] };
+    return {
+      sections: (workshop.sectionIds || []).map((sid, si) => {
+        const sec = data.sections[sid];
+        if (!sec) return null;
+        return {
+          title: sec.title,
+          position: si,
+          blocks: (sec.blockIds || []).map((bid, bi) => {
+            const b = data.blocks[bid];
+            if (!b) return null;
+            return {
+              position: bi,
+              duration: b.duration,
+              title: b.title,
+              description: b.description || '',
+              person: b.person || '',
+              material: b.material || '',
+            };
+          }).filter(Boolean),
+        };
+      }).filter(Boolean),
+    };
+  };
+
+  const workshopTitle = data.workshops[workshopId]?.title || '';
+
   return (
-    <div className="float-ur-panel">
-      <button className="float-ur-btn" onClick={h.undo} disabled={!h.canUndo} aria-label="Undo">
-        <Icon name="undo" size={16} />
-        <span className="float-ur-tip">Undo</span>
-      </button>
-      <button className="float-ur-btn" onClick={h.redo} disabled={!h.canRedo} aria-label="Redo">
-        <Icon name="redo" size={16} />
-        <span className="float-ur-tip">Redo</span>
-      </button>
-    </div>
+    <>
+      <div className="float-ur-panel">
+        <button className="float-ur-btn" onClick={h.undo} disabled={!h.canUndo} aria-label="Undo">
+          <Icon name="undo" size={16} />
+          <span className="float-ur-tip">Undo</span>
+        </button>
+        <button className="float-ur-btn" onClick={h.redo} disabled={!h.canRedo} aria-label="Redo">
+          <Icon name="redo" size={16} />
+          <span className="float-ur-tip">Redo</span>
+        </button>
+        <div className="float-ur-divider" />
+        <button className="float-ur-btn" onClick={() => setShowSaveTemplate(true)} aria-label="Save as template">
+          <Icon name="bookmark" size={16} />
+          <span className="float-ur-tip">Save as template</span>
+        </button>
+      </div>
+      {showSaveTemplate && (
+        <SaveTemplateModal
+          workshopTitle={workshopTitle}
+          content={buildContent()}
+          onClose={() => setShowSaveTemplate(false)}
+          onSaved={(tmpl) => {
+            setTemplates((t) => [tmpl, ...t]);
+            toast('Template saved');
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -729,7 +780,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           />
         )}
 
-        <FloatingUndoRedo />
+        <FloatingUndoRedo data={data} workshopId={workshopId} toast={toast} />
       </div>
     </WorkshopRealtimeContext.Provider>
   );

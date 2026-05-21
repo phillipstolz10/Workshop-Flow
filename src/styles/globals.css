@@ -239,6 +239,11 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
   text-align: left; cursor: pointer; font: inherit; width: 100%;
 }
 .dash-row-new:hover { background: var(--surface-2); }
+.dash-section-heading {
+  font-family: var(--font-serif); font-size: 22px;
+  letter-spacing: -0.01em; color: var(--text); font-weight: 400;
+  margin: 0;
+}
 
 /* ── Project view ── */
 .ws-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
@@ -395,6 +400,29 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
   opacity: 1;
   transition-delay: 200ms;
 }
+
+.float-ur-divider {
+  height: 1px; background: var(--border);
+  margin: 2px 4px;
+}
+
+/* ── Save-as-template modal ── */
+.st-modal {
+  width: 100%; max-width: 420px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 32px;
+  box-shadow: 0 20px 60px -12px rgba(0,0,0,0.28);
+  animation: npIn 200ms cubic-bezier(.2,.8,.3,1);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.st-title {
+  font-family: var(--font-serif); font-size: 26px;
+  letter-spacing: -0.015em; line-height: 1.1;
+  color: var(--text); margin: 0;
+}
+.st-field { display: flex; flex-direction: column; gap: 6px; }
+.st-error { font-size: 13px; color: var(--danger); }
+.st-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 
 /* Agenda */
 .ws-agenda {

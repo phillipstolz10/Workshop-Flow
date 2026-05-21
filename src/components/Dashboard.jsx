@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 
-export default function Dashboard({ data, userId, onOpenProject, onNewProject, onDeleteProject }) {
+export default function Dashboard({ data, userId, onOpenProject, onNewProject, onDeleteProject, templates, onDeleteTemplate }) {
   const projects = data.projects;
   const [pendingDelete, setPendingDelete] = useState(null); // project object
+  const [pendingDeleteTemplate, setPendingDeleteTemplate] = useState(null);
 
   return (
     <div className="page">
@@ -51,6 +52,55 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
           </div>
         </button>
       </div>
+
+      {templates && templates.length > 0 && (
+        <>
+          <div className="page-head" style={{ marginTop: 48, marginBottom: 0 }}>
+            <div>
+              <h2 className="dash-section-heading">Your Templates</h2>
+            </div>
+          </div>
+          <div className="dash-list" style={{ marginTop: 16 }}>
+            {templates.map((t) => (
+              <div key={t.id} className="dash-row dash-row-deletable">
+                <div className="dash-row-main">
+                  <div className="dash-row-title">{t.name}</div>
+                  {t.description && <div className="dash-row-desc">{t.description}</div>}
+                </div>
+                <div className="dash-row-end">
+                  <button
+                    className="btn btn-icon dash-row-delete"
+                    onClick={(e) => { e.stopPropagation(); setPendingDeleteTemplate(t); }}
+                    title="Delete template"
+                  >
+                    <Icon name="trash" size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {pendingDeleteTemplate && (
+        <div className="confirm-overlay" onClick={() => setPendingDeleteTemplate(null)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-title">Delete template?</div>
+            <p className="confirm-body">
+              Delete "{pendingDeleteTemplate.name}"? This cannot be undone.
+            </p>
+            <div className="confirm-actions">
+              <button className="btn btn-ghost" onClick={() => setPendingDeleteTemplate(null)}>Cancel</button>
+              <button
+                className="btn confirm-delete-btn"
+                onClick={() => { onDeleteTemplate(pendingDeleteTemplate.id); setPendingDeleteTemplate(null); }}
+              >
+                <Icon name="trash" size={14} /> Delete template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pendingDelete && (
         <div className="confirm-overlay" onClick={() => setPendingDelete(null)}>

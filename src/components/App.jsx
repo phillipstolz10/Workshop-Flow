@@ -8,7 +8,7 @@ import ProfileView from './ProfileView.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { useTweaks } from '../hooks/useTweaks.js';
 import { db } from '../lib/supabase.js';
-import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, setPresenceColor, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead } from '../lib/db.js';
+import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, setPresenceColor, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead, getTemplates, deleteTemplate } from '../lib/db.js';
 import NamePromptModal from './NamePromptModal.jsx';
 import NotificationPanel from './NotificationPanel.jsx';
 
@@ -73,6 +73,7 @@ export default function App() {
   const [profileReady, setProfileReady] = useState(false);
   const [notifications,      setNotifications]      = useState([]);
   const [showNotifications,  setShowNotifications]  = useState(false);
+  const [templates,          setTemplates]          = useState([]);
 
   const loadStartedRef = useRef(false);
 
@@ -218,6 +219,21 @@ export default function App() {
       .subscribe();
     return () => { db.removeChannel(channel); };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    getTemplates().then(setTemplates).catch(() => {});
+  }, [session?.user?.id]);
+
+  const handleDeleteTemplate = async (id) => {
+    setTemplates((t) => t.filter((x) => x.id !== id));
+    try {
+      await deleteTemplate(id);
+    } catch {
+      // restore on error
+      getTemplates().then(setTemplates).catch(() => {});
+    }
+  };
 
   const markNotifRead = async (id) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
@@ -389,7 +405,7 @@ export default function App() {
         </nav>
 
         {view.name === 'dashboard' &&
-          <Dashboard data={data} userId={session.user.id} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} />
+          <Dashboard data={data} userId={session.user.id} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} templates={templates} onDeleteTemplate={handleDeleteTemplate} />
         }
         {view.name === 'project' &&
           <ProjectView

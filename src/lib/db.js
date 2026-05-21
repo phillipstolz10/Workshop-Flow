@@ -220,6 +220,23 @@ export async function deleteLink(id) {
   if (error) throw error;
 }
 
+export async function getTemplates() {
+  const { data, error } = await db.from('templates').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function saveTemplate(name, description, content) {
+  const { data, error } = await db.from('templates').insert({ name, description: description || null, content }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTemplate(id) {
+  const { error } = await db.from('templates').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function seedSampleProject() {
   const pid = crypto.randomUUID();
   const wid = crypto.randomUUID();
