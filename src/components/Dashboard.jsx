@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 
-export default function Dashboard({ data, userId, onOpenProject, onNewProject, onDeleteProject, templates, onDeleteTemplate }) {
+export default function Dashboard({ data, userId, onOpenProject, onNewProject, onDeleteProject, templates, onDeleteTemplate, onOpenTemplate }) {
   const projects = data.projects;
   const [pendingDelete, setPendingDelete] = useState(null); // project object
   const [pendingDeleteTemplate, setPendingDeleteTemplate] = useState(null);
@@ -44,13 +44,6 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
             </div>
           </div>
         ))}
-        <button className="dash-row-new" onClick={onNewProject}>
-          <div className="dash-row-main">
-            <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon name="plus" size={14} /> Start a new project
-            </div>
-          </div>
-        </button>
       </div>
 
       {templates && templates.length > 0 && (
@@ -62,7 +55,7 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
           </div>
           <div className="dash-list" style={{ marginTop: 16 }}>
             {templates.map((t) => (
-              <div key={t.id} className="dash-row dash-row-deletable">
+              <div key={t.id} className="dash-row dash-row-deletable" onClick={() => onOpenTemplate(t.id)} style={{ cursor: 'pointer' }}>
                 <div className="dash-row-main">
                   <div className="dash-row-title">{t.name}</div>
                   {t.description && <div className="dash-row-desc">{t.description}</div>}

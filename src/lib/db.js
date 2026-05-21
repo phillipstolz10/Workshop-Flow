@@ -237,6 +237,22 @@ export async function deleteTemplate(id) {
   if (error) throw error;
 }
 
+export async function getTemplate(id) {
+  const { data, error } = await db.from('templates').select('*').eq('id', id).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTemplate(id, { name, description, content }) {
+  const patch = {};
+  if (name        !== undefined) patch.name        = name;
+  if (description !== undefined) patch.description = description || null;
+  if (content     !== undefined) patch.content     = content;
+  patch.updated_at = new Date().toISOString();
+  const { error } = await db.from('templates').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
 export async function seedSampleProject() {
   const pid = crypto.randomUUID();
   const wid = crypto.randomUUID();

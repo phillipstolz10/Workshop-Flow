@@ -5,10 +5,11 @@ import ProjectView from './ProjectView.jsx';
 import Workshop from './Workshop.jsx';
 import AuthScreen from './AuthScreen.jsx';
 import ProfileView from './ProfileView.jsx';
+import TemplateEditor from './TemplateEditor.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { useTweaks } from '../hooks/useTweaks.js';
 import { db } from '../lib/supabase.js';
-import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, setPresenceColor, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead, getTemplates, deleteTemplate } from '../lib/db.js';
+import { loadAllData, applyStateDiff, seedSampleProject, getProfile, upsertProfile, setPresenceColor, acceptPendingInvitations, getNotifications, markNotificationRead, markAllNotificationsRead, getTemplates, deleteTemplate, getTemplate, updateTemplate } from '../lib/db.js';
 import NamePromptModal from './NamePromptModal.jsx';
 import NotificationPanel from './NotificationPanel.jsx';
 
@@ -36,9 +37,10 @@ const Spinner = () => (
 
 // ── URL ↔ view helpers ────────────────────────────────────────────────────────
 function viewToPath(v) {
-  if (v.name === 'workshop') return `/projects/${v.projectId}/workshops/${v.workshopId}`;
-  if (v.name === 'project')  return `/projects/${v.projectId}`;
-  if (v.name === 'profile')  return '/profile';
+  if (v.name === 'workshop')  return `/projects/${v.projectId}/workshops/${v.workshopId}`;
+  if (v.name === 'project')   return `/projects/${v.projectId}`;
+  if (v.name === 'profile')   return '/profile';
+  if (v.name === 'template')  return `/templates/${v.templateId}`;
   return '/';
 }
 
@@ -48,6 +50,8 @@ function pathToView(path) {
   const pr = path.match(/^\/projects\/([^/?#]+)/);
   if (pr) return { name: 'project', projectId: pr[1] };
   if (path.startsWith('/profile')) return { name: 'profile' };
+  const tmpl = path.match(/^\/templates\/([^/?#]+)/);
+  if (tmpl) return { name: 'template', templateId: tmpl[1] };
   return { name: 'dashboard' };
 }
 
@@ -68,12 +72,15 @@ export default function App() {
   const bump = () => forceTick((t) => t + 1);
   // Workshop registers a diff-broadcaster here so undo/redo propagates to peers.
   const afterUndoRedoRef = useRef(null);
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
 
   const [profile,      setProfile]      = useState(null);
   const [profileReady, setProfileReady] = useState(false);
   const [notifications,      setNotifications]      = useState([]);
   const [showNotifications,  setShowNotifications]  = useState(false);
   const [templates,          setTemplates]          = useState([]);
+  const [activeTemplate,     setActiveTemplate]     = useState(null);
 
   const loadStartedRef = useRef(false);
 
@@ -176,6 +183,7 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e) => {
+      if (viewRef.current?.name === 'template') return; // template editor handles its own undo/redo
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); redo(); }
@@ -221,9 +229,15 @@ export default function App() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || view.name !== 'dashboard') return;
     getTemplates().then(setTemplates).catch(() => {});
-  }, [session?.user?.id]);
+  }, [session?.user?.id, view.name]);
+
+  useEffect(() => {
+    if (view.name !== 'template' || !view.templateId || !session?.user?.id) return;
+    if (activeTemplate?.id === view.templateId) return; // already loaded
+    getTemplate(view.templateId).then(setActiveTemplate).catch(() => goDashboard());
+  }, [view.name, view.templateId, session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDeleteTemplate = async (id) => {
     setTemplates((t) => t.filter((x) => x.id !== id));
@@ -280,6 +294,19 @@ export default function App() {
   const navigateTo = (newView) => { setView(newView); window.history.pushState(newView, '', viewToPath(newView)); };
   const goDashboard = () => navigateTo({ name: 'dashboard' });
   const goProject   = (projectId) => navigateTo({ name: 'project', projectId });
+  const goTemplate  = async (templateId) => {
+    // Find in already-loaded templates first, else fetch
+    const existing = templates.find((t) => t.id === templateId);
+    if (existing) {
+      setActiveTemplate(existing);
+    } else {
+      try {
+        const t = await getTemplate(templateId);
+        setActiveTemplate(t);
+      } catch { return; }
+    }
+    navigateTo({ name: 'template', templateId });
+  };
   const goWorkshop  = (workshopId) => {
     const w = data.workshops[workshopId];
     navigateTo({ name: 'workshop', projectId: w.projectId, workshopId });
@@ -405,7 +432,7 @@ export default function App() {
         </nav>
 
         {view.name === 'dashboard' &&
-          <Dashboard data={data} userId={session.user.id} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} templates={templates} onDeleteTemplate={handleDeleteTemplate} />
+          <Dashboard data={data} userId={session.user.id} onOpenProject={goProject} onNewProject={newProject} onDeleteProject={deleteProject} templates={templates} onDeleteTemplate={handleDeleteTemplate} onOpenTemplate={goTemplate} />
         }
         {view.name === 'project' &&
           <ProjectView
@@ -437,6 +464,14 @@ export default function App() {
             userFullName={profile?.full_name}
           />
         }
+        {view.name === 'template' && activeTemplate && (
+          <TemplateEditor
+            template={activeTemplate}
+            onBack={goDashboard}
+            toast={showToast}
+            tweaks={tweaks}
+          />
+        )}
         {view.name === 'profile' &&
           <ProfileView
             session={session}
