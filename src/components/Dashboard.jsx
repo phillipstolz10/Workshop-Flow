@@ -61,6 +61,7 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
                   {t.description && <div className="dash-row-desc">{t.description}</div>}
                 </div>
                 <div className="dash-row-end">
+                  <span className="dash-row-arrow"><Icon name="arrow-right" size={16} /></span>
                   <button
                     className="btn btn-icon dash-row-delete"
                     onClick={(e) => { e.stopPropagation(); setPendingDeleteTemplate(t); }}

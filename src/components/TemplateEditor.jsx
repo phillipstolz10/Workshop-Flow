@@ -4,7 +4,7 @@ import BlockRow from './BlockRow.jsx';
 import BlockEditor from './BlockEditor.jsx';
 import { WorkshopRealtimeContext } from '../contexts/WorkshopRealtimeContext.jsx';
 import { updateTemplate } from '../lib/db.js';
-import { snap5 } from '../lib/utils.js';
+import { snap5, fmtDuration } from '../lib/utils.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -296,6 +296,12 @@ export default function TemplateEditor({ template, onBack, toast, tweaks }) {
                 onChange={renameDesc}
                 placeholder="Add a description"
               />
+            </div>
+            <div className="ws-header-total">
+              <div className="eyebrow">Total session</div>
+              <div className="ws-total-num serif">
+                {fmtDuration(Object.values(state.blocks).reduce((sum, b) => sum + (b.duration || 0), 0))}
+              </div>
             </div>
           </div>
           {/* No toolbar for templates */}
