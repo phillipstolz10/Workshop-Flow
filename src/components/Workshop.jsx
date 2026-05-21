@@ -3,6 +3,7 @@ import Icon from './Icon.jsx';
 import BlockRow from './BlockRow.jsx';
 import BlockEditor from './BlockEditor.jsx';
 import PackingList from './PackingList.jsx';
+import LinksPanel from './LinksPanel.jsx';
 import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { WorkshopRealtimeContext } from '../contexts/WorkshopRealtimeContext.jsx';
 import { useWorkshopRealtime } from '../hooks/useWorkshopRealtime.js';
@@ -106,6 +107,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const [collapsed,       setCollapsed]       = useState({});
   const [editingPlanned,  setEditingPlanned]  = useState(false);
   const [showPackingList, setShowPackingList] = useState(false);
+  const [showLinks, setShowLinks] = useState(false);
 
   const [drag,       setDrag]       = useState(null);
   const blockDragRef = useRef(null);
@@ -535,6 +537,17 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                 <span>Packing list</span>
               </button>
             </div>
+            <div className="ws-toolbar-group">
+              <button
+                className={'btn btn-ghost ws-tool' + (showLinks ? ' is-active' : '')}
+                onClick={() => setShowLinks((v) => !v)}
+                title="Related links"
+                style={showLinks ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent-border)' } : {}}
+              >
+                <Icon name="link" size={14} />
+                <span>Links</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -705,6 +718,14 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             data={data}
             workshopId={workshopId}
             onClose={() => setShowPackingList(false)}
+          />
+        )}
+
+        {showLinks && (
+          <LinksPanel
+            entityType="workshop"
+            entityId={workshopId}
+            onClose={() => setShowLinks(false)}
           />
         )}
 

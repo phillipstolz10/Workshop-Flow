@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Icon from './Icon.jsx';
 import SharePanel from './SharePanel.jsx';
+import LinksPanel from './LinksPanel.jsx';
 import { fmtDate, workshopTotal, fmtDuration } from '../lib/utils.js';
 
 export default function ProjectView({ data, projectId, userId, session, profile, onOpenWorkshop, onNewWorkshop, onBack, onDeleteWorkshop, onDeleteProject, onUpdateProject }) {
@@ -10,6 +11,7 @@ export default function ProjectView({ data, projectId, userId, session, profile,
   const workshops = project.workshopIds.map((wid) => data.workshops[wid]);
   const [showShare,         setShowShare]         = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLinks,         setShowLinks]         = useState(false);
 
   return (
     <div className="page">
@@ -49,6 +51,14 @@ export default function ProjectView({ data, projectId, userId, session, profile,
               <Icon name="user-plus" size={14} /> Share
             </button>
           )}
+          <button
+            className={'btn btn-ghost' + (showLinks ? ' is-active' : '')}
+            onClick={() => setShowLinks((v) => !v)}
+            title="Related links"
+            style={showLinks ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent-border)' } : {}}
+          >
+            <Icon name="link" size={14} /> Links
+          </button>
           <button className="btn btn-accent" onClick={onNewWorkshop}>
             <Icon name="plus" size={14} /> New workshop
           </button>
@@ -105,6 +115,14 @@ export default function ProjectView({ data, projectId, userId, session, profile,
           session={session}
           profile={profile}
           onClose={() => setShowShare(false)}
+        />
+      )}
+
+      {showLinks && (
+        <LinksPanel
+          entityType="project"
+          entityId={projectId}
+          onClose={() => setShowLinks(false)}
         />
       )}
 

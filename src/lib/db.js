@@ -189,6 +189,37 @@ export async function setPresenceColor(userId, color) {
   if (error) throw error;
 }
 
+export async function getLinks(entityType, entityId) {
+  const { data, error } = await db
+    .from('links')
+    .select('id, label, url, position')
+    .eq('entity_type', entityType)
+    .eq('entity_id', entityId)
+    .order('position');
+  if (error) throw error;
+  return data || [];
+}
+
+export async function addLink(entityType, entityId, label, url, position) {
+  const { data, error } = await db
+    .from('links')
+    .insert({ entity_type: entityType, entity_id: entityId, label, url, position })
+    .select('id, label, url, position')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateLinkLabel(id, label) {
+  const { error } = await db.from('links').update({ label }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteLink(id) {
+  const { error } = await db.from('links').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function seedSampleProject() {
   const pid = crypto.randomUUID();
   const wid = crypto.randomUUID();
