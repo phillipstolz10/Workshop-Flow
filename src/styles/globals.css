@@ -244,6 +244,7 @@ body[data-density="spacious"]    { --row-py: 22px; --row-px: 22px; }
   letter-spacing: -0.025em; color: var(--text); font-weight: 400;
   margin: 0;
 }
+.dash-empty-desc { margin-top: 12px; color: var(--text-muted); font-size: 15px; }
 
 /* ── Project view ── */
 .ws-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
