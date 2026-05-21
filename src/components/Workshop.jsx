@@ -77,7 +77,6 @@ function FloatingUndoRedo({ data, workshopId, toast }) {
               duration: b.duration,
               title: b.title,
               description: b.description || '',
-              person: b.person || '',
               material: b.material || '',
             };
           }).filter(Boolean),
@@ -525,11 +524,10 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           id: bid, sectionId: sid,
           title:       b.title       || 'Block',
           description: b.description || '',
-          person:      b.person      || '',
           material:    b.material    || '',
           duration:    b.duration    || 15,
         };
-        dbBlocks.push({ id: bid, section_id: sid, title: newBlocks[bid].title, duration: newBlocks[bid].duration, description: newBlocks[bid].description || null, person: newBlocks[bid].person || null, material: newBlocks[bid].material || null, position: bi });
+        dbBlocks.push({ id: bid, section_id: sid, title: newBlocks[bid].title, duration: newBlocks[bid].duration, description: newBlocks[bid].description || null, person: null, material: newBlocks[bid].material || null, position: bi });
       });
       newSections[sid] = { id: sid, workshopId, title: sec.title || 'Section', blockIds };
       dbSections.push({ id: sid, workshop_id: workshopId, title: newSections[sid].title, position: si });

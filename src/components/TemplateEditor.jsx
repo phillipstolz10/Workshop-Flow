@@ -23,7 +23,6 @@ function contentToState(content) {
         id: bid, sectionId: sid,
         title:       b.title       || 'New block',
         description: b.description || '',
-        person:      b.person      || '',
         material:    b.material    || '',
         duration:    b.duration    || 15,
       };
@@ -47,7 +46,6 @@ function stateToContent(state) {
             duration:    b.duration,
             title:       b.title,
             description: b.description || '',
-            person:      b.person      || '',
             material:    b.material    || '',
           };
         }),
