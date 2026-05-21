@@ -664,7 +664,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           </div>
         </header>
 
-        {showSuggestions && workshop.sectionIds.length === 0 && templates.length > 0 && (
+        {showSuggestions && !workshop.sectionIds.some(sid => (data.sections[sid]?.blockIds?.length || 0) > 0) && templates.length > 0 && (
           <div className="ts-bar">
             <div className="ts-bar-inner">
               <div className="ts-bar-head">
@@ -680,14 +680,19 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                   .slice(0, 3)
                   .map((t) => (
                     <button key={t.id} className="ts-card" onClick={() => applyTemplate(t)}>
-                      <div className="ts-card-name">{t.name}</div>
-                      {t.description && <div className="ts-card-desc">{t.description}</div>}
+                      <div className="ts-card-main">
+                        <div className="ts-card-name">{t.name}</div>
+                        {t.description && <div className="ts-card-desc">{t.description}</div>}
+                      </div>
+                      <div className="ts-card-end">
+                        <span className="ts-card-arrow"><Icon name="arrow-right" size={16} /></span>
+                      </div>
                     </button>
                   ))}
-                <button className="btn btn-ghost ts-see-all" onClick={() => setShowAllTemplates(true)}>
-                  See all templates
-                </button>
               </div>
+              <button className="btn btn-ghost ts-see-all" onClick={() => setShowAllTemplates(true)}>
+                See all templates
+              </button>
             </div>
           </div>
         )}
