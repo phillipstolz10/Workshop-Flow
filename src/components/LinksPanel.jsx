@@ -75,7 +75,7 @@ export default function LinksPanel({ entityType, entityId, onClose }) {
       <div className="lp-scrim" onClick={onClose} />
       <aside className="lp-panel">
         <div className="lp-head">
-          <div className="lp-title"><Icon name="link" size={15} /> Related Links</div>
+          <div className="lp-title">Related Links</div>
           <button className="btn btn-icon" onClick={onClose}><Icon name="x" size={16} /></button>
         </div>
 
@@ -117,6 +117,7 @@ export default function LinksPanel({ entityType, entityId, onClose }) {
         </div>
 
         <div className="lp-form">
+          <div className="sp-section-label">Add link</div>
           <div className="lp-form-row">
             <input
               className="input lp-url-input"
@@ -126,17 +127,9 @@ export default function LinksPanel({ entityType, entityId, onClose }) {
               onPaste={(e) => { const v = e.clipboardData.getData('text'); setTimeout(() => handleUrlChange(v), 0); }}
               onBlur={() => { if (urlVal) handleUrlChange(urlVal); }}
             />
+            <button className="btn btn-accent lp-add-btn" onClick={handleAdd} disabled={!urlVal.trim()}>Add</button>
           </div>
           {urlError && <div className="lp-error">{urlError}</div>}
-          <div className="lp-form-row">
-            <input
-              className="input lp-label-input"
-              value={labelVal}
-              placeholder="Label (auto-filled)"
-              onChange={(e) => setLabelVal(e.target.value)}
-            />
-            <button className="btn btn-primary lp-add-btn" onClick={handleAdd}>Add</button>
-          </div>
         </div>
       </aside>
     </>

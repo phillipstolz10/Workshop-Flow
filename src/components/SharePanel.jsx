@@ -72,32 +72,6 @@ export default function SharePanel({ projectId, session, profile, onClose }) {
         </div>
 
         <div className="sp-body">
-          {/* Invite form */}
-          <div className="sp-section">
-            <div className="sp-section-label">Invite by email</div>
-            <form onSubmit={handleInvite} className="sp-invite-form">
-              <input
-                className="input sp-email-input"
-                type="email"
-                placeholder="colleague@company.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setFeedback(null); }}
-                disabled={busy}
-                autoComplete="off"
-              />
-              <button
-                className="btn btn-accent sp-invite-btn"
-                type="submit"
-                disabled={busy || !email.trim()}
-              >
-                {busy ? '…' : 'Invite'}
-              </button>
-            </form>
-            {feedback && (
-              <div className={`sp-feedback sp-${feedback.type}`}>{feedback.msg}</div>
-            )}
-          </div>
-
           {/* Member list */}
           <div className="sp-section">
             <div className="sp-section-label">Members</div>
@@ -148,6 +122,32 @@ export default function SharePanel({ projectId, session, profile, onClose }) {
               )}
             </ul>
           </div>
+        </div>
+
+        {/* Invite form — sticky bottom */}
+        <div className="sp-section sp-invite-section">
+          <div className="sp-section-label">Invite by email</div>
+          <form onSubmit={handleInvite} className="sp-invite-form">
+            <input
+              className="input sp-email-input"
+              type="email"
+              placeholder="colleague@company.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setFeedback(null); }}
+              disabled={busy}
+              autoComplete="off"
+            />
+            <button
+              className="btn btn-accent sp-invite-btn"
+              type="submit"
+              disabled={busy || !email.trim()}
+            >
+              {busy ? '…' : 'Invite'}
+            </button>
+          </form>
+          {feedback && (
+            <div className={`sp-feedback sp-${feedback.type}`}>{feedback.msg}</div>
+          )}
         </div>
       </div>
     </>
