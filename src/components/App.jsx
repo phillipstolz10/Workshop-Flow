@@ -462,6 +462,7 @@ export default function App() {
             userId={session.user.id}
             userColor={profile?.presence_color}
             userFullName={profile?.full_name}
+            templates={templates}
           />
         }
         {view.name === 'template' && activeTemplate && (

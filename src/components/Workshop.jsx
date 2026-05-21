@@ -148,7 +148,7 @@ function PresenceAvatars({ presence, userId }) {
   );
 }
 
-export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory, userId, userColor, userFullName }) {
+export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory, userId, userColor, userFullName, templates = [] }) {
   // Look up workshop/project — may be briefly undefined during Strict Mode
   // double-mount or a concurrent data reload. Guard after hooks (Rules of Hooks).
   const workshop = data.workshops[workshopId];
@@ -159,6 +159,8 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const [editingPlanned,  setEditingPlanned]  = useState(false);
   const [showPackingList, setShowPackingList] = useState(false);
   const [showLinks, setShowLinks] = useState(false);
+  const [showSuggestions,  setShowSuggestions]  = useState(true);
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
 
   const [drag,       setDrag]       = useState(null);
   const blockDragRef = useRef(null);
@@ -499,6 +501,66 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
     }, 0);
   };
 
+  const applyTemplate = async (template) => {
+    const sections = template.content?.sections || [];
+    if (!sections.length) { toast('Template is empty'); return; }
+
+    pushHistory();
+
+    // Build normalized state from template content
+    const newSectionIds = [];
+    const newSections = {};
+    const newBlocks = {};
+    const dbSections = [];
+    const dbBlocks = [];
+
+    sections.forEach((sec, si) => {
+      const sid = crypto.randomUUID();
+      newSectionIds.push(sid);
+      const blockIds = [];
+      (sec.blocks || []).forEach((b, bi) => {
+        const bid = crypto.randomUUID();
+        blockIds.push(bid);
+        newBlocks[bid] = {
+          id: bid, sectionId: sid,
+          title:       b.title       || 'Block',
+          description: b.description || '',
+          person:      b.person      || '',
+          material:    b.material    || '',
+          duration:    b.duration    || 15,
+        };
+        dbBlocks.push({ id: bid, section_id: sid, title: newBlocks[bid].title, duration: newBlocks[bid].duration, description: newBlocks[bid].description || null, person: newBlocks[bid].person || null, material: newBlocks[bid].material || null, position: bi });
+      });
+      newSections[sid] = { id: sid, workshopId, title: sec.title || 'Section', blockIds };
+      dbSections.push({ id: sid, workshop_id: workshopId, title: newSections[sid].title, position: si });
+    });
+
+    // Optimistic update
+    onUpdateData((d) => ({
+      ...d,
+      sections: { ...d.sections, ...newSections },
+      blocks:   { ...d.blocks,   ...newBlocks },
+      workshops: {
+        ...d.workshops,
+        [workshopId]: { ...d.workshops[workshopId], sectionIds: newSectionIds },
+      },
+    }));
+
+    setShowSuggestions(false);
+    setShowAllTemplates(false);
+    toast('Template applied');
+
+    // Persist to Supabase
+    try {
+      await db.from('sections').insert(dbSections);
+      if (dbBlocks.length) await db.from('blocks').insert(dbBlocks);
+      // Update workshop sectionIds order via position (already set in inserts above)
+      broadcast('section_add', { section: newSections[newSectionIds[0]], sectionIds: newSectionIds });
+    } catch {
+      toast('Failed to apply template');
+    }
+  };
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') closeBlockEditor(); };
     window.addEventListener('keydown', onKey);
@@ -601,6 +663,34 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             </div>
           </div>
         </header>
+
+        {showSuggestions && workshop.sectionIds.length === 0 && templates.length > 0 && (
+          <div className="ts-bar">
+            <div className="ts-bar-inner">
+              <div className="ts-bar-head">
+                <span className="ts-bar-title">Start from a template?</span>
+                <button className="btn btn-icon ts-close" onClick={() => setShowSuggestions(false)} aria-label="Dismiss">
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+              <div className="ts-cards">
+                {templates
+                  .slice()
+                  .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                  .slice(0, 3)
+                  .map((t) => (
+                    <button key={t.id} className="ts-card" onClick={() => applyTemplate(t)}>
+                      <div className="ts-card-name">{t.name}</div>
+                      {t.description && <div className="ts-card-desc">{t.description}</div>}
+                    </button>
+                  ))}
+                <button className="btn btn-ghost ts-see-all" onClick={() => setShowAllTemplates(true)}>
+                  See all templates
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className={'ws-agenda style-' + sectionStyle} onDragOver={(e) => { if (blockDragRef.current) e.preventDefault(); }}>
           {workshop.sectionIds.map((sid, idx) => {
@@ -778,6 +868,33 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             entityId={workshopId}
             onClose={() => setShowLinks(false)}
           />
+        )}
+
+        {showAllTemplates && (
+          <div className="confirm-overlay" onClick={() => setShowAllTemplates(false)}>
+            <div className="ts-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="ts-modal-head">
+                <div className="ts-modal-title">Choose a Template</div>
+                <button className="btn btn-icon" onClick={() => setShowAllTemplates(false)}>
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+              <div className="ts-modal-list">
+                {templates
+                  .slice()
+                  .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                  .map((t) => (
+                    <button key={t.id} className="ts-modal-row" onClick={() => applyTemplate(t)}>
+                      <div className="ts-modal-row-name">{t.name}</div>
+                      {t.description && <div className="ts-modal-row-desc">{t.description}</div>}
+                    </button>
+                  ))}
+                {templates.length === 0 && (
+                  <div className="ts-modal-empty">No templates saved yet.</div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         <FloatingUndoRedo data={data} workshopId={workshopId} toast={toast} />
