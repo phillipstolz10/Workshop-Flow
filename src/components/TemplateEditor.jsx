@@ -285,8 +285,8 @@ export default function TemplateEditor({ template, onBack, toast, tweaks, projec
         <header className="ws-header">
           <div className="ws-header-inner">
             <div className="ws-header-meta">
-              <div className="eyebrow" style={{ marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center', whiteSpace: 'nowrap' }}>
-                <a onClick={onBack} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>Templates</a>
+              <div className="eyebrow eyebrow-row">
+                <a onClick={onBack}>Templates</a>
               </div>
               <ContentEditable className="ws-title" value={name} onChange={renameName} placeholder="Untitled template" />
               <ContentEditable

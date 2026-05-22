@@ -10,7 +10,7 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
     <div className="page">
       <div className="page-head">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 14 }}>Workspace</div>
+          <div className="eyebrow eyebrow-row">Workspace</div>
           <h1 className="page-title">Your Projects</h1>
         </div>
         <button className="btn btn-accent" onClick={onNewProject}>
@@ -46,7 +46,7 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
         ))}
       </div>
 
-      <div className="page-head" style={{ marginTop: 48, marginBottom: 0 }}>
+      <div className="page-head page-head-templates">
         <div>
           <h2 className="dash-section-heading">Your Templates</h2>
         </div>
@@ -55,9 +55,9 @@ export default function Dashboard({ data, userId, onOpenProject, onNewProject, o
         </button>
       </div>
       {templates && templates.length > 0 ? (
-        <div className="dash-list" style={{ marginTop: 16 }}>
+        <div className="dash-list dash-list-gap">
           {templates.map((t) => (
-            <div key={t.id} className="dash-row dash-row-deletable" onClick={() => onOpenTemplate(t.id)} style={{ cursor: 'pointer' }}>
+            <div key={t.id} className="dash-row dash-row-deletable" onClick={() => onOpenTemplate(t.id)}>
               <div className="dash-row-main">
                 <div className="dash-row-title">{t.name}</div>
                 {t.description && <div className="dash-row-desc">{t.description}</div>}

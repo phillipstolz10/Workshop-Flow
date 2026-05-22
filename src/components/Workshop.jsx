@@ -580,10 +580,10 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
         <header className="ws-header">
           <div className="ws-header-inner">
             <div className="ws-header-meta">
-              <div className="eyebrow" style={{ marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center', whiteSpace: 'nowrap' }}>
-                <a onClick={onBack} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>Projects</a>
-                <span style={{ color: 'var(--text-subtle)' }}>/</span>
-                <a onClick={onProject} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>{project.name}</a>
+              <div className="eyebrow eyebrow-row">
+                <a onClick={onBack}>Projects</a>
+                <span className="sep">/</span>
+                <a onClick={onProject}>{project.name}</a>
               </div>
               <ContentEditable className="ws-title" value={workshop.title} onChange={renameWorkshop} />
               <div className="ws-header-row">
@@ -615,19 +615,19 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                 <TickerNumber value={fmtDuration(totalMins)} isOver={totalMins > (workshop.plannedDuration || 0)} />
               </div>
               {editingPlanned ? (
-                <div className="ws-total-sub mono" style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                <div className="ws-total-sub mono is-editing">
                   <input
                     type="number" min="5" step="5"
                     defaultValue={workshop.plannedDuration || totalMins}
                     onBlur={(e) => { changePlannedDuration(parseInt(e.target.value || '5', 10)); setEditingPlanned(false); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditingPlanned(false); }}
                     autoFocus
-                    style={{ width: 52, textAlign: 'right', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 4px', fontFamily: 'var(--font-mono)', fontSize: 12, background: 'var(--surface)', outline: 'none' }}
+                    className="planned-dur-input"
                   />
                   <span>min planned</span>
                 </div>
               ) : (
-                <div className="ws-total-sub mono" onClick={() => setEditingPlanned(true)} style={{ cursor: 'pointer' }} title="Click to edit planned duration">
+                <div className="ws-total-sub mono" onClick={() => setEditingPlanned(true)} title="Click to edit planned duration">
                   {fmtDuration(workshop.plannedDuration || totalMins)} planned
                 </div>
               )}
@@ -635,14 +635,13 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           </div>
 
           <div className="ws-toolbar">
-            <div style={{ flex: 1 }} />
+            <div className="spacer" />
             <PresenceAvatars presence={presence} userId={userId} />
             <div className="ws-toolbar-group">
               <button
                 className={'btn btn-ghost ws-tool' + (showPackingList ? ' is-active' : '')}
                 onClick={() => setShowPackingList((v) => !v)}
                 title="Packing list"
-                style={showPackingList ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent-border)' } : {}}
               >
                 <Icon name="backpack" size={14} />
                 <span>Packing list</span>
@@ -653,7 +652,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                 className={'btn btn-ghost ws-tool' + (showLinks ? ' is-active' : '')}
                 onClick={() => setShowLinks((v) => !v)}
                 title="Related links"
-                style={showLinks ? { background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'var(--accent-border)' } : {}}
               >
                 <Icon name="link" size={14} />
                 <span>Links</span>
