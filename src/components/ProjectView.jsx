@@ -9,9 +9,10 @@ export default function ProjectView({ data, projectId, userId, session, profile,
   if (!project) return null;
   const isOwner  = project.userId === userId;
   const workshops = project.workshopIds.map((wid) => data.workshops[wid]);
-  const [showShare,         setShowShare]         = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showLinks,         setShowLinks]         = useState(false);
+  const [showShare,            setShowShare]            = useState(false);
+  const [showDeleteConfirm,    setShowDeleteConfirm]    = useState(false);
+  const [pendingDeleteWorkshop, setPendingDeleteWorkshop] = useState(null);
+  const [showLinks,            setShowLinks]            = useState(false);
 
   return (
     <div className="page">
@@ -84,7 +85,7 @@ export default function ProjectView({ data, projectId, userId, session, profile,
               {isOwner && (
                 <button
                   className="ws-card-delete btn btn-icon"
-                  onClick={(e) => { e.stopPropagation(); onDeleteWorkshop(w.id); }}
+                  onClick={(e) => { e.stopPropagation(); setPendingDeleteWorkshop(w); }}
                   title="Delete workshop"
                 >
                   <Icon name="trash" size={14} />
@@ -124,6 +125,28 @@ export default function ProjectView({ data, projectId, userId, session, profile,
           entityId={projectId}
           onClose={() => setShowLinks(false)}
         />
+      )}
+
+      {pendingDeleteWorkshop && (
+        <div className="confirm-overlay" onClick={() => setPendingDeleteWorkshop(null)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-title">Delete "{pendingDeleteWorkshop.title}"?</div>
+            <p className="confirm-body">
+              This will permanently delete the workshop and all its sections and blocks. This cannot be undone.
+            </p>
+            <div className="confirm-actions">
+              <button className="btn btn-ghost" onClick={() => setPendingDeleteWorkshop(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn confirm-delete-btn"
+                onClick={() => { onDeleteWorkshop(pendingDeleteWorkshop.id); setPendingDeleteWorkshop(null); }}
+              >
+                <Icon name="trash" size={14} /> Delete workshop
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showDeleteConfirm && (
