@@ -1,0 +1,252 @@
+/* =========================================================================
+   Workshop Planner — Design Tokens v1.0
+   Drop-in replacement for the :root variable block in globals.css.
+   Every token below has a documented role; do not introduce hex literals
+   in components — pick the closest token or add a new one here first.
+   ========================================================================= */
+
+:root {
+  /* -----------------------------------------------------------------------
+     1. COLOR — Foundations
+     ----------------------------------------------------------------------- */
+
+  /* Surfaces (warm-neutral, very low saturation) */
+  --bg:               #fafaf9;   /* page background */
+  --surface:          #ffffff;   /* cards, inputs, modal interiors */
+  --surface-2:        #f5f5f4;   /* hover bg, secondary panels, disabled bg */
+  --surface-3:        #ebe9e6;   /* pressed states, stronger zebra */
+
+  /* Borders */
+  --border:           #e7e5e4;   /* default 1px border */
+  --border-strong:    #d6d3d1;   /* emphasized borders, dividers under load */
+
+  /* Text — neutral ramp */
+  --text:             #0c0a09;   /* primary text + dark-button bg */
+  --text-hover:       #1f1b18;   /* dark-button hover bg (was #1f1b18 hardcoded) */
+  --text-muted:       #78716c;   /* secondary text, icon-button rest */
+  --text-subtle:      #a8a29e;   /* tertiary text, disabled text */
+
+  /* -----------------------------------------------------------------------
+     2. COLOR — Brand accent (orange)
+     ----------------------------------------------------------------------- */
+
+  --accent:           #f97316;   /* primary brand accent */
+  --accent-hover:     #ea580c;   /* canonical hover (was #ea580c AND #ea6c0a — unified) */
+  --accent-pressed:   #c2410c;   /* active/pressed state */
+  --accent-ink:       #ffffff;   /* text on solid accent surfaces */
+  --accent-soft:      #fff7ed;   /* tinted bg (e.g. unread row, hover halo) */
+  --accent-soft-hover:#fde8d0;   /* hover on accent-soft (was hardcoded) */
+  --accent-border:    #fed7aa;   /* tinted border + focus ring color */
+
+  /* -----------------------------------------------------------------------
+     3. COLOR — Semantic states
+     ----------------------------------------------------------------------- */
+
+  /* Danger */
+  --danger:           #dc2626;
+  --danger-hover:     #b91c1c;
+  --danger-ink:       #ffffff;
+  --danger-soft:      #fef2f2;
+  --danger-border:    #fecaca;
+
+  /* Success */
+  --success:          #16a34a;
+  --success-hover:    #15803d;
+  --success-ink:      #ffffff;
+  --success-soft:     #f0fdf4;
+  --success-border:   #bbf7d0;
+
+  /* Warning (reserved — not currently used in product, defined for future) */
+  --warning:          #d97706;
+  --warning-soft:     #fffbeb;
+  --warning-border:   #fde68a;
+
+  /* Presence */
+  --presence-online:  #22c55e;
+  --presence-away:    #eab308;
+  --presence-offline: #a8a29e;
+
+  /* Disabled (aliases — keep semantic clarity at call site) */
+  --disabled-bg:      var(--surface-2);
+  --disabled-text:    var(--text-subtle);
+  --disabled-border:  var(--border);
+
+  /* -----------------------------------------------------------------------
+     4. COLOR — Scrims & focus
+     ----------------------------------------------------------------------- */
+
+  --scrim-light:      rgba(12, 10, 9, 0.18);  /* slide-in panels */
+  --scrim-medium:     rgba(12, 10, 9, 0.45);  /* confirm modals */
+  --scrim-heavy:      rgba(12, 10, 9, 0.55);  /* onboarding / name-prompt */
+  --scrim-blur:       blur(2px);              /* used selectively on heavy scrim */
+
+  --ring:             0 0 0 2px var(--accent-border);   /* canonical focus ring */
+  --ring-strong:      0 0 0 3px var(--accent-border);   /* large/important controls */
+
+  /* -----------------------------------------------------------------------
+     5. TYPOGRAPHY — Families
+     ----------------------------------------------------------------------- */
+
+  --font-sans:  "Geist", "Inter Tight", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Instrument Serif", "Times New Roman", Georgia, serif;
+  --font-mono:  "Geist Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* -----------------------------------------------------------------------
+     6. TYPOGRAPHY — Sizes (8 UI + 5 display)
+     ----------------------------------------------------------------------- */
+
+  /* UI scale */
+  --fs-xs:    11px;   /* eyebrows, field labels, badges (often uppercase) */
+  --fs-sm:    12px;   /* hints, captions, small UI, presence labels */
+  --fs-base:  13px;   /* default UI: buttons, links, body in panels, kbd */
+  --fs-md:    14px;   /* body copy, block titles, descriptions */
+  --fs-lg:    15px;   /* prominent UI text, block title in editor, user-row name */
+  --fs-xl:    18px;   /* large UI numbers, duration display */
+  --fs-2xl:   22px;   /* small headings: modal titles, dashboard rows, brand */
+  --fs-3xl:   24px;   /* section titles, panel headers */
+
+  /* Display scale (serif) */
+  --fs-d-sm:  26px;   /* card titles, primary modal headings */
+  --fs-d-md:  34px;   /* auth title, onboarding heading */
+  --fs-d-lg:  48px;   /* big stats, workshop count */
+  --fs-d-xl:  56px;   /* page titles, dashboard headings */
+  --fs-d-2xl: 64px;   /* hero numbers (total session time) */
+
+  /* Legacy alias — preserves .body class without a rename */
+  --fs-body: var(--fs-md);
+
+  /* -----------------------------------------------------------------------
+     7. TYPOGRAPHY — Letter spacing
+     ----------------------------------------------------------------------- */
+
+  --ls-tightest: -0.025em;  /* page titles, 56px+ display */
+  --ls-tighter:  -0.02em;   /* brand, auth titles, profile headings */
+  --ls-tight:    -0.015em;  /* workshop title, card titles, section titles */
+  --ls-snug:     -0.01em;   /* dash-row title, serif panel titles */
+  --ls-normal:   0;
+  --ls-wide:     0.04em;    /* section index, popover hints */
+  --ls-wider:    0.08em;    /* uppercase field labels */
+  --ls-widest:   0.12em;    /* uppercase eyebrows */
+
+  /* -----------------------------------------------------------------------
+     8. TYPOGRAPHY — Line heights & weights
+     ----------------------------------------------------------------------- */
+
+  --lh-tight:   1.15;
+  --lh-snug:    1.3;
+  --lh-normal:  1.45;
+  --lh-relaxed: 1.6;
+
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+
+  /* -----------------------------------------------------------------------
+     9. SPACING — 4px base with 2px half-steps
+     Naming: --s-N where N is the pixel value (read it at a glance)
+     ----------------------------------------------------------------------- */
+
+  --s-0:   0;
+  --s-2:   2px;
+  --s-4:   4px;
+  --s-6:   6px;
+  --s-8:   8px;
+  --s-10:  10px;
+  --s-12:  12px;
+  --s-14:  14px;
+  --s-16:  16px;
+  --s-20:  20px;
+  --s-24:  24px;
+  --s-28:  28px;
+  --s-32:  32px;
+  --s-40:  40px;
+  --s-48:  48px;
+  --s-56:  56px;
+  --s-64:  64px;
+  --s-80:  80px;
+
+  /* Layout constants */
+  --page-max-w:   1240px;
+  --page-px:      var(--s-28);
+  --page-py-top:  var(--s-40);
+  --page-py-bot:  var(--s-80);
+
+  /* Density-aware row spacing (block rows) */
+  --row-py-compact:     10px;
+  --row-px-compact:     14px;
+  --row-py-comfortable: 16px;
+  --row-px-comfortable: 18px;
+  --row-py-spacious:    22px;
+  --row-px-spacious:    22px;
+
+  --row-py: var(--row-py-comfortable);
+  --row-px: var(--row-px-comfortable);
+
+  /* -----------------------------------------------------------------------
+     10. BORDER RADIUS
+     ----------------------------------------------------------------------- */
+
+  --r-xs:    4px;     /* inline-editable text spans, grips */
+  --r-sm:    6px;     /* small interactive: date fields, dur-step, footer button */
+  --r-md:    10px;    /* buttons, inputs, default cards */
+  --r-lg:    14px;    /* large cards, floating panels */
+  --r-xl:    16px;    /* modals (all unified — was 16/18 mix) */
+  --r-full:  999px;   /* pills, badges, full-rounded chips */
+  --r-circle: 50%;    /* avatars, dots */
+
+  /* -----------------------------------------------------------------------
+     11. SHADOWS — All on rgba(12,10,9,..) brand-tinted base
+     ----------------------------------------------------------------------- */
+
+  --shadow-xs:      0 1px 2px rgba(12, 10, 9, 0.06);
+  --shadow-sm:      0 2px 8px rgba(12, 10, 9, 0.08);
+  --shadow-md:      0 8px 24px -16px rgba(12, 10, 9, 0.18);
+  --shadow-lg:      0 20px 60px -12px rgba(12, 10, 9, 0.28);
+  --shadow-xl:      0 24px 64px -16px rgba(12, 10, 9, 0.32);
+
+  --shadow-card-hover: 0 1px 0 rgba(12, 10, 9, 0.02),
+                       0 8px 24px -16px rgba(12, 10, 9, 0.18);
+  --shadow-panel:      -20px 0 40px -20px rgba(12, 10, 9, 0.18);
+  --shadow-popover:    0 10px 30px -10px rgba(12, 10, 9, 0.18);
+  --shadow-toast:      0 12px 32px -12px rgba(12, 10, 9, 0.32);
+  --shadow-float:      0 2px 8px rgba(12, 10, 9, 0.08);
+
+  /* -----------------------------------------------------------------------
+     12. MOTION
+     ----------------------------------------------------------------------- */
+
+  --ease-out:    cubic-bezier(.2, .8, .3, 1);   /* canonical springy ease */
+  --ease-linear: linear;
+
+  --dur-1: 80ms;    /* active press */
+  --dur-2: 120ms;   /* default button/element hover */
+  --dur-3: 160ms;   /* inline editor entrance, subtle ui */
+  --dur-4: 220ms;   /* panel slide-in */
+  --dur-5: 280ms;   /* large entrances, ticker bounce */
+
+  /* Pre-baked transition shorthand for the most common case */
+  --t-default: background var(--dur-2) ease,
+               border-color var(--dur-2) ease,
+               color var(--dur-2) ease,
+               transform var(--dur-1) ease,
+               box-shadow var(--dur-2) ease;
+
+  /* -----------------------------------------------------------------------
+     13. CONTROL HEIGHTS — 3 standard sizes (was 5+)
+     ----------------------------------------------------------------------- */
+
+  --ctrl-sm:  32px;  /* icon buttons, tool buttons, compact actions */
+  --ctrl-md:  36px;  /* default button + input height */
+  --ctrl-lg:  44px;  /* full-width forms (auth, name prompt) */
+
+  /* -----------------------------------------------------------------------
+     14. Z-INDEX SCALE — explicit, named layers
+     ----------------------------------------------------------------------- */
+
+  --z-base:     0;
+  --z-sticky:   10;
+  --z-overlay:  100;   /* slide-in panels */
+  --z-modal:    200;   /* dialogs */
+  --z-popover:  300;   /* popovers, tooltips */
+  --z-toast:    400;   /* toast notifications */
+}

@@ -3,3 +3,4 @@
 node_modules/
 dist/
 serve.py
+DESIGN_AUDIT.md
