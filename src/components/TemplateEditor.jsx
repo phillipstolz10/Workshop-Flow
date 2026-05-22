@@ -81,13 +81,14 @@ function ContentEditable({ value, onChange, className, placeholder }) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
-export default function TemplateEditor({ template, onBack, toast, tweaks }) {
+export default function TemplateEditor({ template, onBack, toast, tweaks, projects = [], userId, onUseTemplate }) {
   const [state,  setState]  = useState(() => contentToState(template.content));
   const [name,   setName]   = useState(template.name || '');
   const [desc,   setDesc]   = useState(template.description || '');
 
   const [editingBlockId, setEditingBlockId] = useState(null);
   const [collapsed,      setCollapsed]      = useState({});
+  const [showUseModal,   setShowUseModal]   = useState(false);
 
   // Local undo/redo (independent of global HistoryContext)
   const undoStack  = useRef([]);
@@ -295,14 +296,18 @@ export default function TemplateEditor({ template, onBack, toast, tweaks }) {
                 placeholder="Add a description"
               />
             </div>
-            <div className="ws-header-total">
-              <div className="eyebrow">Total session</div>
-              <div className="ws-total-num serif">
-                {fmtDuration(Object.values(state.blocks).reduce((sum, b) => sum + (b.duration || 0), 0))}
+            <div className="te-header-right">
+              <div className="ws-header-total">
+                <div className="eyebrow">Total session</div>
+                <div className="ws-total-num serif">
+                  {fmtDuration(Object.values(state.blocks).reduce((sum, b) => sum + (b.duration || 0), 0))}
+                </div>
               </div>
+              <button className="btn btn-primary" onClick={() => setShowUseModal(true)}>
+                Use this template
+              </button>
             </div>
           </div>
-          {/* No toolbar for templates */}
         </header>
 
         {/* ── Agenda ──────────────────────────────────────────────────────── */}
@@ -482,6 +487,51 @@ export default function TemplateEditor({ template, onBack, toast, tweaks }) {
             <span className="float-ur-tip">Redo</span>
           </button>
         </div>
+
+      {/* ── Use template modal ──────────────────────────────────────────── */}
+      {showUseModal && (
+        <div className="confirm-overlay" onClick={() => setShowUseModal(false)}>
+          <div className="ut-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ut-modal-head">
+              <div className="ut-modal-title">Create workshop from template</div>
+              <p className="ut-modal-sub">Select a project to add the new workshop to</p>
+              <button className="btn btn-icon ut-modal-close" onClick={() => setShowUseModal(false)} aria-label="Close">
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+            <div className="ut-modal-body">
+              {projects.length === 0 ? (
+                <p className="ut-modal-empty">
+                  You have no projects yet.{' '}
+                  <a onClick={() => { setShowUseModal(false); onBack(); }} style={{ cursor: 'pointer', color: 'var(--accent)' }}>
+                    Create a project first.
+                  </a>
+                </p>
+              ) : (() => {
+                const own    = projects.filter((p) => p.userId === userId);
+                const shared = projects.filter((p) => p.userId !== userId);
+                const Row = ({ p }) => (
+                  <button key={p.id} className="ut-modal-row" onClick={() => { setShowUseModal(false); onUseTemplate(template, p.id); }}>
+                    <div className="ut-modal-row-name">{p.name}</div>
+                    <div className="ut-modal-row-count">{p.workshopIds.length} {p.workshopIds.length === 1 ? 'workshop' : 'workshops'}</div>
+                  </button>
+                );
+                return (
+                  <>
+                    {own.map((p) => <Row key={p.id} p={p} />)}
+                    {shared.length > 0 && (
+                      <>
+                        <div className="ut-modal-group-label">Shared with me</div>
+                        {shared.map((p) => <Row key={p.id} p={p} />)}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       </div>
     </WorkshopRealtimeContext.Provider>

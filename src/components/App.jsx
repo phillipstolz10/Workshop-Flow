@@ -307,6 +307,42 @@ export default function App() {
     }
     navigateTo({ name: 'template', templateId });
   };
+  const useTemplate = async (template, projectId) => {
+    const wid = crypto.randomUUID();
+    const pos = data.projects.find((p) => p.id === projectId)?.workshopIds.length || 0;
+    const content = template.content || { sections: [] };
+    const newSections = {}, newBlocks = {}, sectionIds = [], dbSections = [], dbBlocks = [];
+    (content.sections || []).forEach((sec, si) => {
+      const sid = crypto.randomUUID();
+      sectionIds.push(sid);
+      const blockIds = [];
+      (sec.blocks || []).forEach((b, bi) => {
+        const bid = crypto.randomUUID();
+        blockIds.push(bid);
+        newBlocks[bid] = { id: bid, sectionId: sid, title: b.title || 'Block', description: b.description || '', person: '', material: b.material || '', duration: b.duration || 15 };
+        dbBlocks.push({ id: bid, section_id: sid, title: b.title || 'Block', duration: b.duration || 15, description: b.description || null, person: null, material: b.material || null, position: bi });
+      });
+      newSections[sid] = { id: sid, workshopId: wid, title: sec.title || 'Section', blockIds };
+      dbSections.push({ id: sid, workshop_id: wid, title: sec.title || 'Section', position: si });
+    });
+    const today = new Date().toISOString().split('T')[0];
+    const ws = { id: wid, projectId, title: template.name || 'Untitled workshop', date: today, plannedDuration: 0, startTime: '09:00', sectionIds };
+    setData((d) => ({
+      ...d,
+      workshops: { ...d.workshops, [wid]: ws },
+      sections:  { ...d.sections, ...newSections },
+      blocks:    { ...d.blocks,   ...newBlocks },
+      projects:  d.projects.map((p) => p.id === projectId ? { ...p, workshopIds: [...p.workshopIds, wid] } : p),
+    }));
+    navigateTo({ name: 'workshop', projectId, workshopId: wid });
+    showToast('Workshop created from template');
+    const { error } = await db.from('workshops').insert({ id: wid, project_id: projectId, title: ws.title, date: ws.date, planned_duration: 0, start_time: '09:00', position: pos });
+    if (!error && dbSections.length) {
+      await db.from('sections').insert(dbSections);
+      if (dbBlocks.length) await db.from('blocks').insert(dbBlocks);
+    }
+  };
+
   const newTemplate = async () => {
     try {
       const t = await saveTemplate('Untitled template', '', { sections: [] });
@@ -361,7 +397,8 @@ export default function App() {
   const newWorkshop = async (projectId) => {
     const sid = crypto.randomUUID(), wid = crypto.randomUUID();
     const sec = { id: sid, title: 'Opening', blockIds: [] };
-    const ws  = { id: wid, projectId, title: 'Untitled workshop', date: '2026-06-01', plannedDuration: 0, startTime: '09:00', sectionIds: [sid] };
+    const today = new Date().toISOString().split('T')[0];
+    const ws  = { id: wid, projectId, title: 'Untitled workshop', date: today, plannedDuration: 0, startTime: '09:00', sectionIds: [sid] };
     const pos = data.projects.find(p => p.id === projectId)?.workshopIds.length || 0;
     setData((d) => ({
       ...d,
@@ -479,6 +516,9 @@ export default function App() {
             onBack={goDashboard}
             toast={showToast}
             tweaks={tweaks}
+            projects={data.projects}
+            userId={session.user.id}
+            onUseTemplate={useTemplate}
           />
         )}
         {view.name === 'profile' &&
