@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Icon from './Icon.jsx';
 import BlockEditor from './BlockEditor.jsx';
-import CommentThread from './CommentThread.jsx';
 import { snap5, initials } from '../lib/utils.js';
 
 export default function BlockRow({
@@ -138,21 +137,6 @@ export default function BlockRow({
           )}
         </div>
       </div>
-
-      {isCommentOpen && (
-        <div className="blk-comment-area">
-          <CommentThread
-            comments={blockComments || []}
-            isInputOpen={isCommentOpen}
-            onOpenInput={() => {}}
-            onCloseInput={onCloseComment}
-            onAdd={onAddComment}
-            onResolve={onResolveComment}
-            onReopen={onReopenComment}
-            onDelete={onDeleteComment}
-          />
-        </div>
-      )}
 
       {isEditing && (
         <BlockEditor mode="inline" block={block} onChange={onChange} onClose={onClose} onDelete={onDelete} />
