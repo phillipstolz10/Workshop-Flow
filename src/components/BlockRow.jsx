@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Icon from './Icon.jsx';
 import BlockEditor from './BlockEditor.jsx';
-import CommentThread from './CommentThread.jsx';
 import { snap5, initials } from '../lib/utils.js';
 
 export default function BlockRow({
@@ -9,8 +8,7 @@ export default function BlockRow({
   onOpen, onChange, onClose, onDelete,
   onDragStart, onDragEnd, onDragOver, onDrop,
   startTime,
-  commentMode, blockComments, isCommentOpen, onCommentOpen, onCloseComment,
-  onAddComment, onResolveComment, onReopenComment, onDeleteComment,
+  commentMode, blockComments, isSelected, onCommentOpen,
 }) {
   const [durOpen, setDurOpen] = useState(false);
   const popoverRef = useRef(null);
@@ -29,6 +27,8 @@ export default function BlockRow({
     onChange({ duration: next });
   };
 
+  const unresolvedCount = (blockComments || []).filter(c => !c.parent_id && !c.resolved).length;
+
   return (
     <div
       className={
@@ -36,8 +36,10 @@ export default function BlockRow({
         (isEditing ? ' is-editing' : '') +
         (isDragging ? ' is-dragging' : '') +
         (isDropTarget ? ' is-drop-target' : '') +
-        (isCommentOpen ? ' is-comment-open' : '')
+        (isSelected ? ' is-selected' : '')
       }
+      data-entity-type="block"
+      data-entity-id={block.id}
       onDragOver={commentMode ? undefined : onDragOver}
       onDrop={commentMode ? undefined : onDrop}
     >
@@ -67,13 +69,14 @@ export default function BlockRow({
         <div className="blk-main">
           <div className="blk-title-head">
             <div
-              className={'blk-duration mono' + (durOpen ? ' is-open' : '')}
-              onClick={(e) => { e.stopPropagation(); setDurOpen(o => !o); }}
-              title="Click to adjust"
+              className={'blk-duration mono' + (durOpen && !commentMode ? ' is-open' : '')}
+              onClick={(e) => { if (commentMode) return; e.stopPropagation(); setDurOpen(o => !o); }}
+              title={commentMode ? undefined : 'Click to adjust'}
+              style={commentMode ? { cursor: 'default' } : undefined}
             >
               {block.duration}<span className="blk-duration-unit">m</span>
               {startTime && <div className="blk-start-time">{startTime}</div>}
-              {durOpen && (
+              {durOpen && !commentMode && (
                 <div className="blk-dur-pop" ref={popoverRef} onClick={(e) => e.stopPropagation()}>
                   <button className="blk-dur-step" onClick={() => adjust(-5)}>−</button>
                   <input
@@ -123,36 +126,23 @@ export default function BlockRow({
               <Icon name="trash" size={14} />
             </button>
           )}
-          {(() => {
-            const rootUnresolved = (blockComments || []).filter(c => !c.parent_id && !c.resolved).length;
-            return rootUnresolved > 0 ? <span className="comment-badge">{rootUnresolved}</span> : null;
-          })()}
+          {!commentMode && unresolvedCount > 0 && (
+            <span className="cm-badge">
+              <Icon name="message" size={11} /> {unresolvedCount}
+            </span>
+          )}
           {commentMode && (
             <button
-              className="btn btn-icon comment-trigger"
+              className="btn btn-icon cm-trigger"
               onClick={(e) => { e.stopPropagation(); onCommentOpen && onCommentOpen(); }}
-              title="Comment"
+              aria-label={`Add comment to ${block.title || 'block'}`}
+              title="Add comment"
             >
-              <Icon name="message-circle" size={14} />
+              <Icon name="message-plus" size={14} />
             </button>
           )}
         </div>
       </div>
-
-      {isCommentOpen && (
-        <div className="blk-comment-area">
-          <CommentThread
-            comments={blockComments || []}
-            isInputOpen={isCommentOpen}
-            onOpenInput={() => {}}
-            onCloseInput={onCloseComment}
-            onAdd={onAddComment}
-            onResolve={onResolveComment}
-            onReopen={onReopenComment}
-            onDelete={onDeleteComment}
-          />
-        </div>
-      )}
 
       {isEditing && (
         <BlockEditor mode="inline" block={block} onChange={onChange} onClose={onClose} onDelete={onDelete} />
