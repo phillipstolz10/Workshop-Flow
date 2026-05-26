@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Icon from './Icon.jsx';
 import BlockEditor from './BlockEditor.jsx';
+import CommentThread from './CommentThread.jsx';
 import { snap5, initials } from '../lib/utils.js';
 
 export default function BlockRow({
@@ -8,6 +9,8 @@ export default function BlockRow({
   onOpen, onChange, onClose, onDelete,
   onDragStart, onDragEnd, onDragOver, onDrop,
   startTime,
+  commentMode, blockComments, isCommentOpen, onCommentOpen, onCloseComment,
+  onAddComment, onResolveComment, onReopenComment, onDeleteComment,
 }) {
   const [durOpen, setDurOpen] = useState(false);
   const popoverRef = useRef(null);
@@ -32,25 +35,29 @@ export default function BlockRow({
         'blk' +
         (isEditing ? ' is-editing' : '') +
         (isDragging ? ' is-dragging' : '') +
-        (isDropTarget ? ' is-drop-target' : '')
+        (isDropTarget ? ' is-drop-target' : '') +
+        (isCommentOpen ? ' is-comment-open' : '')
       }
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      onDragOver={commentMode ? undefined : onDragOver}
+      onDrop={commentMode ? undefined : onDrop}
     >
       <div
         className="blk-activity-strip"
         style={{ opacity: activeEditor ? 1 : 0, background: activeEditor?.color || 'transparent' }}
       />
-      <div className="blk-row" onClick={() => { if (!isEditing && !durOpen) onOpen(); }}>
+      <div className="blk-row" onClick={() => {
+        if (commentMode) { onCommentOpen && onCommentOpen(); return; }
+        if (!isEditing && !durOpen) onOpen();
+      }}>
         <div
           className="blk-grip"
-          draggable
-          onDragStart={(e) => {
+          draggable={!commentMode}
+          onDragStart={commentMode ? undefined : (e) => {
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', block.id);
             onDragStart && onDragStart(e);
           }}
-          onDragEnd={onDragEnd}
+          onDragEnd={commentMode ? undefined : onDragEnd}
           onClick={(e) => e.stopPropagation()}
           title="Drag to reorder"
         >
@@ -107,15 +114,45 @@ export default function BlockRow({
         </div>
 
         <div className="blk-actions">
-          <button
-            className="btn btn-icon blk-delete"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete block"
-          >
-            <Icon name="trash" size={14} />
-          </button>
+          {!commentMode && (
+            <button
+              className="btn btn-icon blk-delete"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              title="Delete block"
+            >
+              <Icon name="trash" size={14} />
+            </button>
+          )}
+          {(() => {
+            const rootUnresolved = (blockComments || []).filter(c => !c.parent_id && !c.resolved).length;
+            return rootUnresolved > 0 ? <span className="comment-badge">{rootUnresolved}</span> : null;
+          })()}
+          {commentMode && (
+            <button
+              className="btn btn-icon comment-trigger"
+              onClick={(e) => { e.stopPropagation(); onCommentOpen && onCommentOpen(); }}
+              title="Comment"
+            >
+              <Icon name="message-circle" size={14} />
+            </button>
+          )}
         </div>
       </div>
+
+      {isCommentOpen && (
+        <div className="blk-comment-area">
+          <CommentThread
+            comments={blockComments || []}
+            isInputOpen={isCommentOpen}
+            onOpenInput={() => {}}
+            onCloseInput={onCloseComment}
+            onAdd={onAddComment}
+            onResolve={onResolveComment}
+            onReopen={onReopenComment}
+            onDelete={onDeleteComment}
+          />
+        </div>
+      )}
 
       {isEditing && (
         <BlockEditor mode="inline" block={block} onChange={onChange} onClose={onClose} onDelete={onDelete} />

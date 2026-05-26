@@ -9,10 +9,11 @@ import { HistoryContext } from '../contexts/HistoryContext.jsx';
 import { WorkshopRealtimeContext } from '../contexts/WorkshopRealtimeContext.jsx';
 import { useWorkshopRealtime } from '../hooks/useWorkshopRealtime.js';
 import { db } from '../lib/supabase.js';
-import { syncSectionPositions, syncBlockPositions } from '../lib/db.js';
+import { syncSectionPositions, syncBlockPositions, loadComments as dbLoadComments, addComment as dbAddComment, resolveComment as dbResolveComment, reopenComment as dbReopenComment, deleteComment as dbDeleteComment } from '../lib/db.js';
+import CommentThread from './CommentThread.jsx';
 import { workshopTotal, fmtDuration, addMinutes, snap5, initials } from '../lib/utils.js';
 
-function ContentEditable({ value, onChange, className }) {
+function ContentEditable({ value, onChange, className, readOnly }) {
   const ref = useRef(null);
   const lastValRef = useRef(value);
   useEffect(() => {
@@ -25,13 +26,14 @@ function ContentEditable({ value, onChange, className }) {
     <span
       ref={ref}
       className={'ce ' + (className || '')}
-      contentEditable
+      contentEditable={!readOnly}
       suppressContentEditableWarning
       onBlur={(e) => {
+        if (readOnly) return;
         const v = e.currentTarget.textContent.trim();
         if (v !== lastValRef.current) { lastValRef.current = v; onChange(v); }
       }}
-      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+      onKeyDown={(e) => { if (readOnly) return; if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
     />
   );
 }
@@ -54,7 +56,7 @@ function TickerNumber({ value, isOver }) {
   );
 }
 
-function FloatingUndoRedo({ data, workshopId, toast }) {
+function FloatingUndoRedo({ data, workshopId, toast, commentMode, onToggleCommentMode }) {
   const h = useContext(HistoryContext);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templates, setTemplates] = useState([]);
@@ -90,18 +92,23 @@ function FloatingUndoRedo({ data, workshopId, toast }) {
   return (
     <>
       <div className="float-ur-panel">
-        <button className="float-ur-btn" onClick={h.undo} disabled={!h.canUndo} aria-label="Undo">
+        <button className="float-ur-btn" onClick={h.undo} disabled={!h.canUndo || commentMode} aria-label="Undo">
           <Icon name="undo" size={16} />
           <span className="float-ur-tip">Undo</span>
         </button>
-        <button className="float-ur-btn" onClick={h.redo} disabled={!h.canRedo} aria-label="Redo">
+        <button className="float-ur-btn" onClick={h.redo} disabled={!h.canRedo || commentMode} aria-label="Redo">
           <Icon name="redo" size={16} />
           <span className="float-ur-tip">Redo</span>
         </button>
         <div className="float-ur-divider" />
-        <button className="float-ur-btn" onClick={() => setShowSaveTemplate(true)} aria-label="Save as template">
+        <button className="float-ur-btn" onClick={() => setShowSaveTemplate(true)} disabled={commentMode} aria-label="Save as template">
           <Icon name="bookmark" size={16} />
           <span className="float-ur-tip">Save as template</span>
+        </button>
+        <div className="float-ur-divider" />
+        <button className={'float-ur-btn' + (commentMode ? ' is-comment-mode' : '')} onClick={onToggleCommentMode} aria-label="Toggle comment mode">
+          <Icon name="message-circle" size={16} />
+          <span className="float-ur-tip">{commentMode ? 'Exit comments' : 'Comment mode'}</span>
         </button>
       </div>
       {showSaveTemplate && (
@@ -166,6 +173,11 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const [dropOver,   setDropOver]   = useState(null);
   const [secDrag,    setSecDrag]    = useState(null);
   const [secDropAt,  setSecDropAt]  = useState(null);
+
+  const [commentMode,            setCommentMode]            = useState(false);
+  const [comments,               setComments]               = useState([]);
+  const [activeCommentEntityId,  setActiveCommentEntityId]  = useState(null);
+  const [commentInputOpen,       setCommentInputOpen]       = useState(false);
 
   const totalMins = workshop ? workshopTotal(data, workshopId) : 0;
   const blockOffsets = (() => {
@@ -560,10 +572,72 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   };
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') closeBlockEditor(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        if (commentMode) { setCommentMode(false); setActiveCommentEntityId(null); setCommentInputOpen(false); }
+        else closeBlockEditor();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [commentMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load comments + realtime subscription
+  useEffect(() => {
+    dbLoadComments(workshopId).then(setComments).catch(() => {});
+    const channel = db.channel('ws-comments:' + workshopId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `workshop_id=eq.${workshopId}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setComments((prev) => prev.some((c) => c.id === payload.new.id) ? prev : [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setComments((prev) => prev.map((c) => c.id === payload.new.id ? payload.new : c));
+        } else if (payload.eventType === 'DELETE') {
+          setComments((prev) => prev.filter((c) => c.id !== payload.old.id && c.parent_id !== payload.old.id));
+        }
+      })
+      .subscribe();
+    return () => { db.removeChannel(channel); };
+  }, [workshopId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Comment handlers ─────────────────────────────────────────────────────
+
+  const openCommentEntity = (key) => {
+    setActiveCommentEntityId((prev) => { if (prev === key) { setCommentInputOpen(false); return null; } setCommentInputOpen(true); return key; });
+  };
+
+  const handleAddComment = async (entityType, entityId, body, parentId) => {
+    const tmpId = crypto.randomUUID();
+    const optimistic = {
+      id: tmpId, workshop_id: workshopId, entity_type: entityType, entity_id: entityId,
+      parent_id: parentId || null, user_id: userId, author_name: userFullName || 'Me',
+      body, resolved: false, created_at: new Date().toISOString(),
+    };
+    setComments((prev) => [...prev, optimistic]);
+    try {
+      const saved = await dbAddComment({ workshopId, entityType, entityId, parentId, userId, authorName: userFullName || 'Anonymous', body });
+      setComments((prev) => prev.map((c) => c.id === tmpId ? saved : c));
+    } catch {
+      setComments((prev) => prev.filter((c) => c.id !== tmpId));
+      toast('Failed to save comment');
+    }
+  };
+
+  const handleResolveComment = async (id, replyIds = []) => {
+    const now = new Date().toISOString();
+    setComments((prev) => prev.map((c) => (c.id === id || replyIds.includes(c.id)) ? { ...c, resolved: true, resolved_by: userId, resolved_at: now } : c));
+    await dbResolveComment(id, userId);
+    for (const rid of replyIds) await dbResolveComment(rid, userId);
+  };
+
+  const handleReopenComment = async (id) => {
+    setComments((prev) => prev.map((c) => c.id === id ? { ...c, resolved: false, resolved_by: null, resolved_at: null } : c));
+    await dbReopenComment(id);
+  };
+
+  const handleDeleteComment = async (id) => {
+    setComments((prev) => prev.filter((c) => c.id !== id && c.parent_id !== id));
+    await dbDeleteComment(id);
+  };
 
   // ── Context value for children (BlockEditor etc.) ─────────────────────────
 
@@ -693,7 +767,13 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           </div>
         )}
 
-        <main className={'ws-agenda style-' + sectionStyle} onDragOver={(e) => { if (blockDragRef.current) e.preventDefault(); }}>
+        {commentMode && (
+          <div className="comment-mode-banner">
+            Comment Mode — click any section or block to leave a comment
+          </div>
+        )}
+
+        <main className={'ws-agenda style-' + sectionStyle} onDragOver={(e) => { if (!commentMode && blockDragRef.current) e.preventDefault(); }}>
           {workshop.sectionIds.map((sid, idx) => {
             const section    = data.sections[sid];
             const isCollapsed = !!collapsed[sid];
@@ -717,36 +797,63 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
 
             return (
               <Fragment key={sid}>
-                {idx > 0 && !secDrag && !drag && InsertBar}
+                {idx > 0 && !secDrag && !drag && !commentMode && InsertBar}
                 {secDrag && SecDropBar}
 
                 <section
                   className={'sec ' + (sectionStyle === 'cards' ? 'sec-card' : 'sec-flat') + (secDrag === sid ? ' is-section-dragging' : '')}
-                  onDragOver={(e) => { if ((secDrag && secDrag !== sid) || blockDragRef.current) e.preventDefault(); }}
+                  onDragOver={(e) => { if (!commentMode && ((secDrag && secDrag !== sid) || blockDragRef.current)) e.preventDefault(); }}
                 >
                   <span
                     className="sec-grip"
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'sec:' + sid); setSecDrag(sid); }}
-                    onDragEnd={() => { setSecDrag(null); setSecDropAt(null); }}
+                    draggable={!commentMode}
+                    onDragStart={commentMode ? undefined : (e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'sec:' + sid); setSecDrag(sid); }}
+                    onDragEnd={commentMode ? undefined : () => { setSecDrag(null); setSecDropAt(null); }}
                     title="Drag section to reorder"
                   >
                     <Icon name="grip" size={12} />
                   </span>
-                  <header className="sec-head">
-                    <button className="sec-toggle" onClick={() => setCollapsed((c) => ({ ...c, [sid]: !c[sid] }))}>
+                  <header className="sec-head" onClick={commentMode ? () => openCommentEntity('section:' + sid) : undefined} style={commentMode ? { cursor: 'pointer' } : {}}>
+                    <button className="sec-toggle" onClick={(e) => { e.stopPropagation(); setCollapsed((c) => ({ ...c, [sid]: !c[sid] })); }}>
                       <Icon name={isCollapsed ? 'chevron-right' : 'chevron-down'} size={14} />
                     </button>
                     <div className="sec-index mono">{String(idx + 1).padStart(2, '0')}</div>
-                    <ContentEditable className="sec-title" value={section.title} onChange={(v) => renameSection(sid, v)} />
+                    <ContentEditable className="sec-title" value={section.title} onChange={(v) => renameSection(sid, v)} readOnly={commentMode} />
                     <div className="sec-duration mono" title="Section duration">
                       <span className="sec-duration-num">{secTotal}</span>
                       <span className="sec-duration-unit">min</span>
                     </div>
-                    <div className="sec-actions">
-                      <button className="btn btn-icon" onClick={() => deleteSection(sid)} title="Delete section"><Icon name="trash" size={15} /></button>
-                    </div>
+                    {(() => {
+                      const secUnresolved = comments.filter(c => c.entity_type === 'section' && c.entity_id === sid && !c.parent_id && !c.resolved).length;
+                      return secUnresolved > 0 ? <span className="comment-badge">{secUnresolved}</span> : null;
+                    })()}
+                    {commentMode ? (
+                      <button className="btn btn-icon comment-trigger" onClick={(e) => { e.stopPropagation(); openCommentEntity('section:' + sid); }} title="Comment on section">
+                        <Icon name="message-circle" size={14} />
+                      </button>
+                    ) : (
+                      <div className="sec-actions">
+                        <button className="btn btn-icon" onClick={() => deleteSection(sid)} title="Delete section"><Icon name="trash" size={15} /></button>
+                      </div>
+                    )}
                   </header>
+                  {commentMode && activeCommentEntityId === 'section:' + sid && (
+                    <div className="sec-comment-area">
+                      <CommentThread
+                        comments={comments.filter(c => c.entity_type === 'section' && c.entity_id === sid)}
+                        userId={userId}
+                        userColor={userColor}
+                        userFullName={userFullName}
+                        isInputOpen={commentInputOpen && activeCommentEntityId === 'section:' + sid}
+                        onOpenInput={() => setCommentInputOpen(true)}
+                        onCloseInput={() => setCommentInputOpen(false)}
+                        onAdd={(body, parentId) => handleAddComment('section', sid, body, parentId)}
+                        onResolve={handleResolveComment}
+                        onReopen={handleReopenComment}
+                        onDelete={handleDeleteComment}
+                      />
+                    </div>
+                  )}
 
                   {!isCollapsed && (
                     <div
@@ -766,7 +873,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                         }
                       }}
                     >
-                      {section.blockIds.length === 0 && (
+                      {section.blockIds.length === 0 && !commentMode && (
                         <button className={'sec-empty' + (drag && dropOver?.sectionId === sid ? ' is-drop-target' : '')} onClick={() => addBlock(sid)}>
                           <Icon name="plus" size={14} />
                           {drag ? 'Drop block here' : 'Empty section. Add the first block.'}
@@ -810,6 +917,15 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                               if (dropOver) moveBlock(d.blockId, dropOver.sectionId, dropOver.beforeBlockId);
                               blockDragRef.current = null; setDrag(null); setDropOver(null);
                             }}
+                            commentMode={commentMode}
+                            blockComments={comments.filter(c => c.entity_type === 'block' && c.entity_id === bid)}
+                            isCommentOpen={activeCommentEntityId === 'block:' + bid}
+                            onCommentOpen={() => openCommentEntity('block:' + bid)}
+                            onCloseComment={() => { setActiveCommentEntityId(null); setCommentInputOpen(false); }}
+                            onAddComment={(body, parentId) => handleAddComment('block', bid, body, parentId)}
+                            onResolveComment={handleResolveComment}
+                            onReopenComment={handleReopenComment}
+                            onDeleteComment={handleDeleteComment}
                           />
                         );
                       })}
@@ -822,9 +938,11 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                         />
                       )}
 
-                      <button className="sec-add-row" onClick={() => addBlock(sid)}>
-                        <Icon name="plus" size={13} /> Add block to "{section.title}"
-                      </button>
+                      {!commentMode && (
+                        <button className="sec-add-row" onClick={() => addBlock(sid)}>
+                          <Icon name="plus" size={13} /> Add block to "{section.title}"
+                        </button>
+                      )}
                     </div>
                   )}
                 </section>
@@ -840,9 +958,11 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             );
           })}
 
-          <button className="ws-add-section" onClick={() => addSection()}>
-            <Icon name="plus" size={16} /><span>Add a section</span>
-          </button>
+          {!commentMode && (
+            <button className="ws-add-section" onClick={() => addSection()}>
+              <Icon name="plus" size={16} /><span>Add a section</span>
+            </button>
+          )}
         </main>
 
         {editingBlock && editingMode === 'panel' && (
@@ -898,7 +1018,11 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           </div>
         )}
 
-        <FloatingUndoRedo data={data} workshopId={workshopId} toast={toast} />
+        <FloatingUndoRedo
+          data={data} workshopId={workshopId} toast={toast}
+          commentMode={commentMode}
+          onToggleCommentMode={() => { setCommentMode((v) => !v); setActiveCommentEntityId(null); setCommentInputOpen(false); }}
+        />
       </div>
     </WorkshopRealtimeContext.Provider>
   );

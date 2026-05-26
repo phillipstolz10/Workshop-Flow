@@ -253,6 +253,38 @@ export async function updateTemplate(id, { name, description, content }) {
   if (error) throw error;
 }
 
+// ── Comments ─────────────────────────────────────────────────────────────────
+
+export async function loadComments(workshopId) {
+  const { data, error } = await db.from('comments').select('*').eq('workshop_id', workshopId).order('created_at');
+  if (error) throw error;
+  return data || [];
+}
+
+export async function addComment({ workshopId, entityType, entityId, parentId, userId, authorName, body }) {
+  const { data, error } = await db.from('comments').insert({
+    workshop_id: workshopId, entity_type: entityType, entity_id: entityId,
+    parent_id: parentId || null, user_id: userId, author_name: authorName, body,
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function resolveComment(id, userId) {
+  const { error } = await db.from('comments').update({ resolved: true, resolved_by: userId, resolved_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function reopenComment(id) {
+  const { error } = await db.from('comments').update({ resolved: false, resolved_by: null, resolved_at: null }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteComment(id) {
+  const { error } = await db.from('comments').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function seedSampleProject() {
   const pid = crypto.randomUUID();
   const wid = crypto.randomUUID();
