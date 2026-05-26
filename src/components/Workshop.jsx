@@ -646,19 +646,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   // ── Guard — must come after all hooks ────────────────────────────────────
   if (!workshop || !project) return null;
 
-  // ── Comment sidebar helpers ───────────────────────────────────────────────
-  const _colonIdx        = activeCommentEntityId ? activeCommentEntityId.indexOf(':') : -1;
-  const activeEntityType = _colonIdx >= 0 ? activeCommentEntityId.slice(0, _colonIdx) : null;
-  const activeEntityId   = _colonIdx >= 0 ? activeCommentEntityId.slice(_colonIdx + 1) : null;
-  const activeEntityTitle = activeEntityType === 'block'
-    ? (data.blocks[activeEntityId]?.title || 'Block')
-    : activeEntityType === 'section'
-    ? (data.sections[activeEntityId]?.title || 'Section')
-    : '';
-  const activeEntityComments = activeEntityId
-    ? comments.filter(c => c.entity_type === activeEntityType && c.entity_id === activeEntityId)
-    : [];
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -786,7 +773,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           </div>
         )}
 
-        <div className={'ws-agenda-wrap' + (commentMode && activeCommentEntityId ? ' has-comment' : '')}>
         <main className={'ws-agenda style-' + sectionStyle} onDragOver={(e) => { if (!commentMode && blockDragRef.current) e.preventDefault(); }}>
           {workshop.sectionIds.map((sid, idx) => {
             const section    = data.sections[sid];
@@ -851,6 +837,23 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                       </div>
                     )}
                   </header>
+                  {commentMode && activeCommentEntityId === 'section:' + sid && (
+                    <div className="sec-comment-area">
+                      <CommentThread
+                        comments={comments.filter(c => c.entity_type === 'section' && c.entity_id === sid)}
+                        userId={userId}
+                        userColor={userColor}
+                        userFullName={userFullName}
+                        isInputOpen={commentInputOpen && activeCommentEntityId === 'section:' + sid}
+                        onOpenInput={() => setCommentInputOpen(true)}
+                        onCloseInput={() => setCommentInputOpen(false)}
+                        onAdd={(body, parentId) => handleAddComment('section', sid, body, parentId)}
+                        onResolve={handleResolveComment}
+                        onReopen={handleReopenComment}
+                        onDelete={handleDeleteComment}
+                      />
+                    </div>
+                  )}
 
                   {!isCollapsed && (
                     <div
@@ -961,31 +964,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             </button>
           )}
         </main>
-
-        {commentMode && activeCommentEntityId && (
-          <div className="ws-comment-sidebar">
-            <div className="ws-comment-sidebar-head">
-              <span className="ws-comment-sidebar-title">{activeEntityTitle}</span>
-              <button className="btn btn-icon" onClick={() => { setActiveCommentEntityId(null); setCommentInputOpen(false); }} title="Close">
-                <Icon name="x" size={14} />
-              </button>
-            </div>
-            <CommentThread
-              comments={activeEntityComments}
-              userId={userId}
-              userColor={userColor}
-              userFullName={userFullName}
-              isInputOpen={commentInputOpen}
-              onOpenInput={() => setCommentInputOpen(true)}
-              onCloseInput={() => setCommentInputOpen(false)}
-              onAdd={(body, parentId) => handleAddComment(activeEntityType, activeEntityId, body, parentId)}
-              onResolve={handleResolveComment}
-              onReopen={handleReopenComment}
-              onDelete={handleDeleteComment}
-            />
-          </div>
-        )}
-        </div>
 
         {editingBlock && editingMode === 'panel' && (
           <BlockEditor
