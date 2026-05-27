@@ -126,11 +126,6 @@ export default function BlockRow({
               <Icon name="trash" size={14} />
             </button>
           )}
-          {!commentMode && unresolvedCount > 0 && (
-            <span className="cm-badge">
-              <Icon name="message" size={11} /> {unresolvedCount}
-            </span>
-          )}
           {commentMode && (
             <button
               className="btn btn-icon cm-trigger"
@@ -138,7 +133,7 @@ export default function BlockRow({
               aria-label={`Add comment to ${block.title || 'block'}`}
               title="Add comment"
             >
-              <Icon name="message-plus" size={14} />
+              <Icon name="message-circle" size={14} />
             </button>
           )}
         </div>

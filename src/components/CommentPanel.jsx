@@ -33,11 +33,7 @@ function CommentInput({ targetLabel, userFullName, userColor, onPost, onCancel }
         <span className="cm-avatar" style={{ background: userColor || '#94a3b8' }}>
           {getInitials(userFullName)}
         </span>
-        <span>Commenting as <strong style={{ color: 'var(--text)' }}>{userFullName || 'You'}</strong></span>
-        <span style={{ flex: 1 }} />
-        <span style={{ color: 'var(--text-subtle)' }}>
-          on <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{targetLabel}</span>
-        </span>
+        <span>Commenting on <strong style={{ color: 'var(--text)' }}>{targetLabel}</strong></span>
       </div>
       <textarea
         ref={ref}
@@ -92,7 +88,7 @@ function ReplyInput({ userFullName, userColor, onPost, onCancel }) {
   );
 }
 
-function CommentCard({ comment, userId, showNav, navIndex, navTotal, onPrev, onNext, onResolve, onReopen, onDelete, onReply, isReply }) {
+function CommentCard({ comment, userId, showNav, navIndex, navTotal, onPrev, onNext, onResolve, onReopen, onDelete, onReply, isReply, showReply }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const isAuthor = comment.user_id === userId;
   return (
@@ -116,11 +112,6 @@ function CommentCard({ comment, userId, showNav, navIndex, navTotal, onPrev, onN
             </button>
           </span>
         )}
-        {!showNav && isAuthor && !comment.resolved && (
-          <button className="cm-card-del" title="Delete" onClick={() => setShowDeleteConfirm(v => !v)}>
-            <Icon name="trash" size={13} />
-          </button>
-        )}
       </div>
 
       <div className="cm-card-body">{comment.body}</div>
@@ -130,9 +121,15 @@ function CommentCard({ comment, userId, showNav, navIndex, navTotal, onPrev, onN
           <button className="cm-resolve-btn" onClick={() => onResolve(comment.id)}>
             <Icon name="check" size={12} /> Resolve
           </button>
-          {!isReply && (
+          {showReply && (
             <button onClick={() => onReply(comment.id)}>
               <Icon name="reply" size={12} /> Reply
+            </button>
+          )}
+          <span style={{ flex: 1 }} />
+          {isAuthor && (
+            <button className="cm-card-del" title="Delete" onClick={() => setShowDeleteConfirm(v => !v)}>
+              <Icon name="trash" size={13} />
             </button>
           )}
         </div>
@@ -177,6 +174,7 @@ export default function CommentPanel({
   const [pagerIndex, setPagerIndex] = useState({});
   const [replyingTo, setReplyingTo] = useState(null);
   const [pulsingTarget, setPulsingTarget] = useState(null);
+  const [repliesOpen, setRepliesOpen] = useState({});
 
   // Derived data
   const rootComments = comments.filter(c => !c.parent_id);
@@ -249,7 +247,7 @@ export default function CommentPanel({
     <aside className="cm-panel">
       <div className="cm-panel-head">
         <div className="cm-panel-title">
-          <Icon name="message" size={14} />
+          <Icon name="message-circle" size={14} />
           Comments
           <span className="cm-panel-count">{totalUnresolved}</span>
         </div>
@@ -262,7 +260,7 @@ export default function CommentPanel({
       <div className="cm-panel-body">
         {groups.length === 0 && (
           <div className="cm-empty">
-            <span className="cm-empty-icon"><Icon name="message" size={18} /></span>
+            <span className="cm-empty-icon"><Icon name="message-circle" size={18} /></span>
             <div className="cm-empty-title">No comments yet</div>
             <div>Hover any section or block and click the speech bubble to add the first comment.</div>
           </div>
@@ -322,9 +320,20 @@ export default function CommentPanel({
                       onDelete={onDelete}
                       onReply={id => setReplyingTo(replyingTo === id ? null : id)}
                       isReply={false}
+                      showReply={replies.length === 0}
                     />
 
-                    {replies.map(reply => (
+                    {replies.length > 0 && (
+                      <button
+                        className="cm-replies-toggle"
+                        onClick={() => setRepliesOpen(s => ({ ...s, [currentComment.id]: !s[currentComment.id] }))}
+                      >
+                        <Icon name={repliesOpen[currentComment.id] ? 'chevron-down' : 'chevron-right'} size={11} />
+                        {repliesOpen[currentComment.id] ? 'Hide' : replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                      </button>
+                    )}
+
+                    {repliesOpen[currentComment?.id] && replies.map((reply, ri) => (
                       <div className="cm-reply" key={reply.id}>
                         <CommentCard
                           comment={reply}
@@ -337,8 +346,9 @@ export default function CommentPanel({
                           onResolve={onResolve}
                           onReopen={onReopen}
                           onDelete={onDelete}
-                          onReply={() => {}}
+                          onReply={() => setReplyingTo(replyingTo === currentComment.id ? null : currentComment.id)}
                           isReply
+                          showReply={ri === replies.length - 1}
                         />
                       </div>
                     ))}

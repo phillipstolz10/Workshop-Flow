@@ -56,34 +56,31 @@ function TickerNumber({ value, isOver }) {
   );
 }
 
-function LeftRail({ commentMode, onToggleCommentMode, onUndo, onRedo, canUndo, canRedo, onSaveTemplate }) {
+function FloatingPanel({ commentMode, onToggleCommentMode, onUndo, onRedo, canUndo, canRedo, onSaveTemplate }) {
   return (
-    <aside className="ws-rail">
-      <span className="ws-rail-logo" aria-label="WorkshopFlow">w</span>
-      <div className="ws-rail-sep" />
-      <button className="ws-rail-btn" onClick={onUndo} disabled={!canUndo || commentMode} aria-label="Undo">
+    <div className="float-ur-panel">
+      <button className="float-ur-btn" onClick={onUndo} disabled={!canUndo} aria-label="Undo">
         <Icon name="undo" size={16} />
-        <span className="ws-rail-btn-tip">Undo</span>
+        <span className="float-ur-tip">Undo</span>
       </button>
-      <button className="ws-rail-btn" onClick={onRedo} disabled={!canRedo || commentMode} aria-label="Redo">
+      <button className="float-ur-btn" onClick={onRedo} disabled={!canRedo} aria-label="Redo">
         <Icon name="redo" size={16} />
-        <span className="ws-rail-btn-tip">Redo</span>
+        <span className="float-ur-tip">Redo</span>
       </button>
-      <button className="ws-rail-btn" onClick={onSaveTemplate} disabled={commentMode} aria-label="Save as template">
+      <button className="float-ur-btn" onClick={onSaveTemplate} aria-label="Save as template">
         <Icon name="bookmark" size={16} />
-        <span className="ws-rail-btn-tip">Save as template</span>
+        <span className="float-ur-tip">Save as template</span>
       </button>
-      <div className="ws-rail-sep" />
+      <div className="float-ur-divider" />
       <button
-        className={'ws-rail-btn' + (commentMode ? ' is-active' : '')}
+        className={'float-ur-btn' + (commentMode ? ' is-comment-mode' : '')}
         onClick={onToggleCommentMode}
         aria-label={commentMode ? 'Exit comment mode' : 'Comment mode'}
       >
         <Icon name="message-circle" size={16} />
-        {!commentMode && <span className="ws-rail-pulse" />}
-        <span className="ws-rail-btn-tip">{commentMode ? 'Exit comments' : 'Comment mode'}</span>
+        <span className="float-ur-tip">{commentMode ? 'Exit comments' : 'Comment mode'}</span>
       </button>
-    </aside>
+    </div>
   );
 }
 
@@ -705,7 +702,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
                     aria-label={'Add comment to ' + section.title}
                     title="Add comment"
                   >
-                    <Icon name="message-plus" size={14} />
+                    <Icon name="message-circle" size={14} />
                   </button>
                 ) : (
                   <div className="sec-actions">
@@ -823,7 +820,7 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   return (
     <WorkshopRealtimeContext.Provider value={realtimeCtx}>
       <div className="ws-page">
-        <LeftRail
+        <FloatingPanel
           commentMode={commentMode}
           onToggleCommentMode={() => { setCommentMode(v => !v); setActiveCommentEntityId(null); setCommentInputOpen(false); }}
           onUndo={h.undo}
@@ -832,7 +829,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           canRedo={h.canRedo}
           onSaveTemplate={() => setShowSaveTemplate(true)}
         />
-        <div className="ws-content">
         <header className="ws-header">
           <div className="ws-header-inner">
             <div className="ws-header-meta">
@@ -949,13 +945,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           </div>
         )}
 
-        {commentMode && (
-          <div className="cm-banner">
-            <span className="cm-banner-dot" />
-            Comment mode — click any section or block to leave a comment
-            <kbd className="cm-kbd">Esc</kbd>
-          </div>
-        )}
 
         {commentMode ? (
           <div className="cm-agenda-wrap">
@@ -1042,7 +1031,6 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
             onClose={() => setShowSaveTemplate(false)}
           />
         )}
-        </div>
       </div>
     </WorkshopRealtimeContext.Provider>
   );
