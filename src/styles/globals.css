@@ -560,7 +560,8 @@ body[data-density="spacious"]    { --row-py: var(--row-py-spacious);    --row-px
 /* Block */
 .blk { border-radius: var(--r-md); position: relative; transition: background 120ms ease; }
 .sec-card .blk + .blk { border-top: 1px solid var(--border); border-radius: 0; }
-.sec-card .blk:first-child { border-top-left-radius: 0; border-top-right-radius: 0; }
+.sec-card .blk:first-child { border-radius: 0; }
+.sec-flat .blk { border-radius: 0; }
 .sec-flat .blk + .blk { border-top: 1px solid var(--border); }
 
 .blk-row {
