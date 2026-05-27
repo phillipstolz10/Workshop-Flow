@@ -835,9 +835,11 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
           <div className="ws-header-inner">
             <div className="ws-header-meta">
               <div className="eyebrow eyebrow-row">
-                <a onClick={onBack}>Projects</a>
+                <a onClick={onBack}>Workspace</a>
                 <span className="sep">/</span>
                 <a onClick={onProject}>{project.name}</a>
+                <span className="sep">/</span>
+                <span>{workshop.title}</span>
               </div>
               <ContentEditable className="ws-title" value={workshop.title} onChange={renameWorkshop} />
               <div className="ws-header-row">
