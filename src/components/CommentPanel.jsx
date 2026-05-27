@@ -88,13 +88,13 @@ function ReplyInput({ userFullName, userColor, onPost, onCancel }) {
   );
 }
 
-function CommentCard({ comment, userId, onResolve, onReopen, onDelete, onReply, isReply, showReply }) {
+function CommentCard({ comment, userId, userColorMap, onResolve, onReopen, onDelete, onReply, isReply, showReply }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const isAuthor = comment.user_id === userId;
   return (
     <div className={'cm-card' + (comment.resolved ? ' is-resolved' : '')} role="article" aria-labelledby={'cm-author-' + comment.id}>
       <div className="cm-card-head">
-        <span className="cm-avatar" style={{ background: avatarBg(comment.user_id) }}>
+        <span className="cm-avatar" style={{ background: userColorMap?.[comment.user_id] || avatarBg(comment.user_id) }}>
           {getInitials(comment.author_name)}
         </span>
         <span className="cm-card-author" id={'cm-author-' + comment.id}>{comment.author_name}</span>
@@ -157,6 +157,7 @@ export default function CommentPanel({
   onResolve,
   onReopen,
   onDelete,
+  userColorMap,
 }) {
   const [filter, setFilter] = useState('all');
 const [replyingTo, setReplyingTo] = useState(null);
@@ -298,6 +299,7 @@ const [replyingTo, setReplyingTo] = useState(null);
                           <CommentCard
                             comment={comment}
                             userId={userId}
+                            userColorMap={userColorMap}
                             onResolve={onResolve}
                             onReopen={onReopen}
                             onDelete={onDelete}
@@ -321,6 +323,7 @@ const [replyingTo, setReplyingTo] = useState(null);
                               <CommentCard
                                 comment={reply}
                                 userId={userId}
+                                userColorMap={userColorMap}
                                 onResolve={onResolve}
                                 onReopen={onReopen}
                                 onDelete={onDelete}

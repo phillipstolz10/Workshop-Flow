@@ -958,6 +958,10 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
               userId={userId}
               userFullName={userFullName}
               userColor={userColor}
+              userColorMap={Object.fromEntries([
+                ...presence.map(p => [p.user_id, p.color]),
+                [userId, userColor],
+              ])}
               selectedTarget={selectedCommentTarget}
               inputOpen={commentInputOpen}
               onOpenInput={(kind, id) => { openCommentEntity(kind + ':' + id); setCommentInputOpen(true); }}
