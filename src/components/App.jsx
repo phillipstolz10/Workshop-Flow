@@ -265,7 +265,7 @@ export default function App() {
       const fresh = await loadAllData().catch(() => null);
       if (fresh) setData(fresh);
       navigateTo({ name: 'project', projectId: notif.metadata.project_id });
-    } else if (notif.type === 'new_comment' && notif.metadata?.workshop_id) {
+    } else if ((notif.type === 'new_comment' || notif.type === 'comment_reply') && notif.metadata?.workshop_id) {
       navigateTo({ name: 'workshop', projectId: notif.metadata.project_id, workshopId: notif.metadata.workshop_id, openCommentMode: true });
     }
   };

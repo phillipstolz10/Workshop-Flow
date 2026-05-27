@@ -46,6 +46,9 @@ export default function NotificationPanel({ notifications, onMarkRead, onMarkAll
                     {n.type === 'new_comment' && n.metadata?.comment_body_preview && (
                       <div className="notif-preview">{n.metadata.comment_body_preview}</div>
                     )}
+                    {n.type === 'comment_reply' && n.metadata?.reply_body_preview && (
+                      <div className="notif-preview">{n.metadata.reply_body_preview}</div>
+                    )}
                     <div className="notif-time">{timeAgo(n.created_at)}</div>
                   </div>
                 </li>
