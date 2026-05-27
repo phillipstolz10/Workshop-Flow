@@ -303,7 +303,7 @@ export default function TemplateEditor({ template, onBack, toast, tweaks, projec
                   {fmtDuration(Object.values(state.blocks).reduce((sum, b) => sum + (b.duration || 0), 0))}
                 </div>
               </div>
-              <button className="btn btn-primary" onClick={() => setShowUseModal(true)}>
+              <button className="btn btn-accent" onClick={() => setShowUseModal(true)}>
                 Use this template
               </button>
             </div>
