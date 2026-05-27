@@ -286,7 +286,9 @@ export default function TemplateEditor({ template, onBack, toast, tweaks, projec
           <div className="ws-header-inner">
             <div className="ws-header-meta">
               <div className="eyebrow eyebrow-row">
-                <a onClick={onBack}>Templates</a>
+                <a onClick={onBack}>Workspace</a>
+                <span className="sep">/</span>
+                <span>{name || 'Untitled template'}</span>
               </div>
               <ContentEditable className="ws-title" value={name} onChange={renameName} placeholder="Untitled template" />
               <ContentEditable
