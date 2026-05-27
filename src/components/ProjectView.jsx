@@ -19,9 +19,9 @@ export default function ProjectView({ data, projectId, userId, session, profile,
       <div className="page-head">
         <div style={{ minWidth: 0 }}>
           <div className="eyebrow eyebrow-row">
-            <a onClick={onBack}>Projects</a>
+            <a onClick={onBack}>Workspace</a>
             <span className="sep">/</span>
-            <span className="here">This project</span>
+            <span>{project.name}</span>
           </div>
           <h1
             className="page-title ce"
