@@ -762,7 +762,7 @@ body[data-density="compact"] .blk-desc { display: none; }
 .be-field-person   { grid-column: 1; grid-row: 3; }
 .be-field-material { grid-column: 2; grid-row: 3; }
 
-.be-duration-stepper { display: grid; grid-template-columns: 36px 1fr auto 36px; align-items: center; gap: 6px; }
+.be-duration-stepper { display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; gap: 6px; }
 .be-step {
   height: var(--ctrl-md); border: 1px solid var(--border); background: var(--surface); border-radius: var(--r-md);
   cursor: pointer; font-family: var(--font-mono); font-size: 18px; color: var(--text); line-height: 1;
