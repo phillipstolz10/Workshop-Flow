@@ -88,7 +88,7 @@ function ReplyInput({ userFullName, userColor, onPost, onCancel }) {
   );
 }
 
-function CommentCard({ comment, userId, showNav, navIndex, navTotal, onPrev, onNext, onResolve, onReopen, onDelete, onReply, isReply, showReply }) {
+function CommentCard({ comment, userId, onResolve, onReopen, onDelete, onReply, isReply, showReply }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const isAuthor = comment.user_id === userId;
   return (
@@ -100,18 +100,6 @@ function CommentCard({ comment, userId, showNav, navIndex, navTotal, onPrev, onN
         <span className="cm-card-author" id={'cm-author-' + comment.id}>{comment.author_name}</span>
         <span className="cm-card-time">· {relTime(comment.created_at)}</span>
         {comment.resolved && <span className="cm-card-resolved-badge">Resolved</span>}
-        <span className="cm-card-spacer" />
-        {showNav && (
-          <span className="cm-card-nav">
-            <button className="cm-card-nav-btn" disabled={navIndex === 1} onClick={onPrev} aria-label="Previous comment">
-              <Icon name="chevron-left" size={12} />
-            </button>
-            <span className="cm-card-nav-count" aria-live="polite">{navIndex} / {navTotal}</span>
-            <button className="cm-card-nav-btn" disabled={navIndex === navTotal} onClick={onNext} aria-label="Next comment">
-              <Icon name="chevron-right" size={12} />
-            </button>
-          </span>
-        )}
       </div>
 
       <div className="cm-card-body">{comment.body}</div>
@@ -171,8 +159,7 @@ export default function CommentPanel({
   onDelete,
 }) {
   const [filter, setFilter] = useState('all');
-  const [pagerIndex, setPagerIndex] = useState({});
-  const [replyingTo, setReplyingTo] = useState(null);
+const [replyingTo, setReplyingTo] = useState(null);
   const [pulsingTarget, setPulsingTarget] = useState(null);
   const [repliesOpen, setRepliesOpen] = useState({});
 
@@ -287,13 +274,10 @@ export default function CommentPanel({
                 );
               }
 
-              const pageIdx = pagerIndex[item.entityKey] || 0;
-              const currentComment = item.comments[pageIdx];
-              const replies = repliesByParent[currentComment?.id] || [];
               const isPulsing = pulsingTarget === item.entityKey;
 
               return (
-                <div key={item.entityKey + '-' + pageIdx}>
+                <div key={item.entityKey}>
                   <div className={'cm-on' + (isPulsing ? ' cm-on-pulse' : '')}>
                     On{' '}
                     <a
@@ -307,60 +291,57 @@ export default function CommentPanel({
                   </div>
 
                   <div className="cm-thread">
-                    <CommentCard
-                      comment={currentComment}
-                      userId={userId}
-                      showNav={item.comments.length > 1}
-                      navIndex={pageIdx + 1}
-                      navTotal={item.comments.length}
-                      onPrev={() => setPagerIndex(p => ({ ...p, [item.entityKey]: Math.max(0, (p[item.entityKey] || 0) - 1) }))}
-                      onNext={() => setPagerIndex(p => ({ ...p, [item.entityKey]: Math.min(item.comments.length - 1, (p[item.entityKey] || 0) + 1) }))}
-                      onResolve={onResolve}
-                      onReopen={onReopen}
-                      onDelete={onDelete}
-                      onReply={id => setReplyingTo(replyingTo === id ? null : id)}
-                      isReply={false}
-                      showReply={replies.length === 0}
-                    />
+                    {item.comments.map(comment => {
+                      const replies = repliesByParent[comment.id] || [];
+                      return (
+                        <div key={comment.id}>
+                          <CommentCard
+                            comment={comment}
+                            userId={userId}
+                            onResolve={onResolve}
+                            onReopen={onReopen}
+                            onDelete={onDelete}
+                            onReply={id => setReplyingTo(replyingTo === id ? null : id)}
+                            isReply={false}
+                            showReply={replies.length === 0}
+                          />
 
-                    {replies.length > 0 && (
-                      <button
-                        className="cm-replies-toggle"
-                        onClick={() => setRepliesOpen(s => ({ ...s, [currentComment.id]: !s[currentComment.id] }))}
-                      >
-                        <Icon name={repliesOpen[currentComment.id] ? 'chevron-down' : 'chevron-right'} size={11} />
-                        {repliesOpen[currentComment.id] ? 'Hide' : replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-                      </button>
-                    )}
+                          {replies.length > 0 && (
+                            <button
+                              className="cm-replies-toggle"
+                              onClick={() => setRepliesOpen(s => ({ ...s, [comment.id]: !s[comment.id] }))}
+                            >
+                              <Icon name={repliesOpen[comment.id] ? 'chevron-down' : 'chevron-right'} size={11} />
+                              {repliesOpen[comment.id] ? 'Hide' : replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                            </button>
+                          )}
 
-                    {repliesOpen[currentComment?.id] && replies.map((reply, ri) => (
-                      <div className="cm-reply" key={reply.id}>
-                        <CommentCard
-                          comment={reply}
-                          userId={userId}
-                          showNav={false}
-                          navIndex={1}
-                          navTotal={1}
-                          onPrev={() => {}}
-                          onNext={() => {}}
-                          onResolve={onResolve}
-                          onReopen={onReopen}
-                          onDelete={onDelete}
-                          onReply={() => setReplyingTo(replyingTo === currentComment.id ? null : currentComment.id)}
-                          isReply
-                          showReply={ri === replies.length - 1}
-                        />
-                      </div>
-                    ))}
+                          {repliesOpen[comment.id] && replies.map((reply, ri) => (
+                            <div className="cm-reply" key={reply.id}>
+                              <CommentCard
+                                comment={reply}
+                                userId={userId}
+                                onResolve={onResolve}
+                                onReopen={onReopen}
+                                onDelete={onDelete}
+                                onReply={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                                isReply
+                                showReply={ri === replies.length - 1}
+                              />
+                            </div>
+                          ))}
 
-                    {replyingTo === currentComment?.id && (
-                      <ReplyInput
-                        userFullName={userFullName}
-                        userColor={userColor}
-                        onPost={body => { handleAdd(item.entityType, item.entityId, body, currentComment.id); }}
-                        onCancel={() => setReplyingTo(null)}
-                      />
-                    )}
+                          {replyingTo === comment.id && (
+                            <ReplyInput
+                              userFullName={userFullName}
+                              userColor={userColor}
+                              onPost={body => { handleAdd(item.entityType, item.entityId, body, comment.id); }}
+                              onCancel={() => setReplyingTo(null)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

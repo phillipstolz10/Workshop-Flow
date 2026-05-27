@@ -261,11 +261,12 @@ export default function App() {
 
   const handleNotifNavigate = async (notif) => {
     if (notif.type === 'project_invitation' && notif.metadata?.project_id) {
-      // Accept pending invitations and reload so shared project is in data
       await acceptPendingInvitations(session.user.id).catch(() => {});
       const fresh = await loadAllData().catch(() => null);
       if (fresh) setData(fresh);
       navigateTo({ name: 'project', projectId: notif.metadata.project_id });
+    } else if (notif.type === 'new_comment' && notif.metadata?.workshop_id) {
+      navigateTo({ name: 'workshop', projectId: notif.metadata.project_id, workshopId: notif.metadata.workshop_id, openCommentMode: true });
     }
   };
 
@@ -508,6 +509,7 @@ export default function App() {
             userColor={profile?.presence_color}
             userFullName={profile?.full_name}
             templates={templates}
+            openCommentMode={!!view.openCommentMode}
           />
         }
         {view.name === 'template' && activeTemplate && (

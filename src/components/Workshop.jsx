@@ -112,7 +112,7 @@ function PresenceAvatars({ presence, userId }) {
   );
 }
 
-export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory, userId, userColor, userFullName, templates = [] }) {
+export default function Workshop({ data, workshopId, onUpdateData, onBack, onProject, tweaks, toast, pushHistory, userId, userColor, userFullName, templates = [], openCommentMode = false }) {
   // Look up workshop/project — may be briefly undefined during Strict Mode
   // double-mount or a concurrent data reload. Guard after hooks (Rules of Hooks).
   const workshop = data.workshops[workshopId];
@@ -136,6 +136,8 @@ export default function Workshop({ data, workshopId, onUpdateData, onBack, onPro
   const [comments,               setComments]               = useState([]);
   const [activeCommentEntityId,  setActiveCommentEntityId]  = useState(null);
   const [commentInputOpen,       setCommentInputOpen]       = useState(false);
+
+  useEffect(() => { if (openCommentMode) setCommentMode(true); }, [openCommentMode]);
 
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [savedTemplateList, setSavedTemplateList] = useState([]);
