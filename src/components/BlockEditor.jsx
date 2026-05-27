@@ -170,7 +170,7 @@ export default function BlockEditor({ block, onChange, onClose, onDelete, mode =
         </button>
         <div style={{ flex: 1 }} />
         <button
-          className="btn btn-primary"
+          className="btn btn-accent"
           onClick={onClose}
         >
           <Icon name="check" size={14} /> Done
