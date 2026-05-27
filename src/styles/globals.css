@@ -532,10 +532,10 @@ body[data-density="spacious"]    { --row-py: var(--row-py-spacious);    --row-px
 .sec-insert {
   display: flex; align-items: center; gap: 10px; padding: 0 4px;
   height: 18px; margin: -4px 0; cursor: pointer; opacity: 0;
-  transition: opacity 140ms ease, height 160ms ease, margin 160ms ease;
+  transition: opacity 140ms ease;
 }
 .ws-agenda:hover .sec-insert { opacity: 0.6; }
-.sec-insert:hover { opacity: 1 !important; height: 32px; margin: 0; }
+.sec-insert:hover { opacity: 1 !important; }
 .sec-insert-line { flex: 1; height: 1px; background: var(--border-strong); }
 .sec-insert:hover .sec-insert-line { background: var(--accent); }
 .sec-insert-btn {
